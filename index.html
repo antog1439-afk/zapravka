@@ -5,53 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>БензоБот — карта заправок</title>
     
-    <!-- Leaflet.js (открытая карта) -->
+    <!-- Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Leaflet.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <style>
-        /* ===== ОБНУЛЕНИЕ ===== */
+        /* ===== БАЗОВЫЕ СТИЛИ ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: #ffffff;
-            color: #000000;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
             min-height: 100vh;
-            padding-bottom: 20px;
+            padding-bottom: 10px;
         }
         
         /* ===== ШАПКА ===== */
         .header {
-            background: #f0f0f0;
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
             padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #ccc;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ccc);
             position: sticky;
             top: 0;
             z-index: 100;
         }
-        .header h1 {
-            font-size: 17px;
-            font-weight: 600;
-        }
-        .header .status {
-            font-size: 12px;
-            color: #888;
-        }
-        .header .refresh-btn {
+        .header h1 { font-size: 17px; font-weight: 600; }
+        .header .status { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
+        .refresh-btn {
             background: none;
-            border: 1px solid #ddd;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
             border-radius: 6px;
             padding: 4px 10px;
             font-size: 14px;
             cursor: pointer;
+            color: var(--tg-theme-text-color, #000);
             transition: background 0.2s;
         }
-        .header .refresh-btn:hover {
-            background: #e0e0e0;
-        }
+        .refresh-btn:active { background: var(--tg-theme-hint-color, #ddd); }
         
         /* ===== ФИЛЬТРЫ ===== */
         .filter-bar {
@@ -59,71 +55,54 @@
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ddd;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ddd);
         }
         .filter-btn {
             padding: 4px 12px;
             border-radius: 14px;
-            border: 1px solid #ddd;
-            background: #fff;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
             font-size: 12px;
             cursor: pointer;
             white-space: nowrap;
+            color: var(--tg-theme-text-color, #000);
             transition: all 0.2s;
         }
-        .filter-btn:hover {
-            background: #e8e8e8;
-        }
+        .filter-btn:active { transform: scale(0.95); }
         .filter-btn.active {
-            background: #2481cc;
+            background: var(--tg-theme-button-color, #2481cc);
             color: #fff;
-            border-color: #2481cc;
+            border-color: var(--tg-theme-button-color, #2481cc);
         }
         
         /* ===== КАРТА ===== */
-        #map {
-            width: 100%;
-            height: 40vh;
-            min-height: 250px;
-            background: #e5e5e5;
-        }
+        #map { width: 100%; height: 35vh; min-height: 200px; background: #e5e5e5; }
         
         /* ===== СПИСОК ЗАПРАВОК ===== */
         .stations-container {
             padding: 12px 16px;
-            max-height: calc(100vh - 40vh - 110px);
+            max-height: calc(100vh - 35vh - 110px);
             overflow-y: auto;
         }
         
         .station-card {
-            background: #f8f8f8;
+            background: var(--tg-theme-secondary-bg-color, #f8f8f8);
             border-radius: 10px;
             padding: 12px 14px;
             margin-bottom: 10px;
             border-left: 4px solid #999;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
         }
         .station-card.status-green { border-left-color: #4caf50; }
         .station-card.status-yellow { border-left-color: #ff9800; }
         .station-card.status-red { border-left-color: #f44336; }
         .station-card.status-gray { border-left-color: #999; }
         
-        .station-card .name {
-            font-size: 15px;
-            font-weight: 600;
-        }
-        .station-card .address {
-            font-size: 12px;
-            color: #666;
-            margin: 4px 0;
-        }
-        .station-card .distance {
-            font-size: 12px;
-            color: #888;
-        }
+        .station-card .name { font-size: 15px; font-weight: 600; }
+        .station-card .address { font-size: 12px; color: var(--tg-theme-hint-color, #666); margin: 4px 0; }
+        .station-card .distance { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
         
-        /* Бейдж статуса */
         .station-card .status-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -137,7 +116,6 @@
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
         
-        /* Топливо */
         .station-card .fuels {
             display: flex;
             flex-wrap: wrap;
@@ -145,96 +123,145 @@
             margin: 8px 0;
         }
         .station-card .fuel-tag {
-            background: #fff;
+            background: var(--tg-theme-bg-color, #fff);
             border-radius: 6px;
             padding: 3px 8px;
             font-size: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
         }
-        .fuel-tag .price {
-            font-weight: 600;
-        }
+        .fuel-tag .price { font-weight: 600; }
+        .fuel-tag .from-user { font-size: 9px; color: var(--tg-theme-hint-color, #888); }
         
-        /* Кнопки статусов */
         .station-card .report-buttons {
             display: flex;
             gap: 6px;
             margin-top: 8px;
+            flex-wrap: wrap;
         }
         .station-card .report-btn {
             flex: 1;
+            min-width: 60px;
             border: none;
             border-radius: 6px;
-            padding: 6px;
-            font-size: 12px;
+            padding: 6px 4px;
+            font-size: 11px;
             cursor: pointer;
             font-weight: 600;
             transition: opacity 0.2s;
         }
-        .station-card .report-btn:active {
-            opacity: 0.7;
-        }
+        .station-card .report-btn:active { opacity: 0.7; }
         .report-btn.green { background: #4caf50; color: #fff; }
         .report-btn.yellow { background: #ff9800; color: #fff; }
         .report-btn.red { background: #f44336; color: #fff; }
-        .report-btn.gray { background: #999; color: #fff; }
+        .report-btn.price-btn { background: var(--tg-theme-button-color, #2481cc); color: #fff; }
         
-        .report-time {
-            font-size: 10px;
-            color: #888;
-            margin-top: 4px;
-        }
+        .report-time { font-size: 10px; color: var(--tg-theme-hint-color, #888); margin-top: 4px; }
+        .report-user { font-size: 10px; color: var(--tg-theme-hint-color, #888); }
         
         /* ===== ЗАГРУЗЧИК ===== */
-        .loader {
-            text-align: center;
-            padding: 30px;
-            color: #888;
-        }
+        .loader { text-align: center; padding: 30px; color: var(--tg-theme-hint-color, #888); }
         .loader .spinner {
             display: inline-block;
             width: 28px;
             height: 28px;
-            border: 3px solid #ddd;
-            border-top-color: #2481cc;
+            border: 3px solid var(--tg-theme-hint-color, #ddd);
+            border-top-color: var(--tg-theme-button-color, #2481cc);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         
         /* ===== ПУСТОЕ СОСТОЯНИЕ ===== */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #888;
-        }
-        .empty-state .icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-        
-        .error-details {
-            font-size: 12px;
-            color: #f44336;
-            margin-top: 8px;
-            word-break: break-word;
-        }
-        
-        /* ===== КНОПКА ПОВТОРА ===== */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #888); }
+        .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
+        .error-details { font-size: 12px; color: #f44336; margin-top: 8px; }
         .retry-btn {
             margin-top: 12px;
             padding: 8px 20px;
             border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #f0f0f0;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
             cursor: pointer;
             font-size: 14px;
-            transition: background 0.2s;
+            color: var(--tg-theme-text-color, #000);
         }
-        .retry-btn:hover {
-            background: #e0e0e0;
+        
+        /* ===== МОДАЛЬНОЕ ОКНО ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: var(--tg-theme-bg-color, #fff);
+            border-radius: 16px 16px 0 0;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+        .modal-header h2 { font-size: 17px; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .modal label { display: block; font-size: 13px; font-weight: 500; margin-top: 10px; margin-bottom: 4px; }
+        .modal input, .modal select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
+            font-size: 15px;
+        }
+        .modal .submit-btn {
+            margin-top: 16px;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        .modal .submit-btn:active { opacity: 0.7; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 300;
+            text-align: center;
+            max-width: 90%;
+            animation: fadeInUp 0.3s ease;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
     </style>
 </head>
@@ -262,207 +289,177 @@
 
 <!-- ===== СПИСОК ===== -->
 <div class="stations-container" id="stationsList">
-    <div class="loader">
-        <div class="spinner"></div>
-        <p style="margin-top:10px;">Ищем заправки...</p>
+    <div class="loader"><div class="spinner"></div><p style="margin-top:10px;">Ищем заправки...</p></div>
+</div>
+
+<!-- ===== МОДАЛКА ДЛЯ ЦЕНЫ ===== -->
+<div class="modal" id="priceModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalStationName">⛽ Заправка</h2>
+            <button class="modal-close" onclick="closePriceModal()">✕</button>
+        </div>
+        <label>Тип топлива</label>
+        <select id="fuelType">
+            <option value="АИ-92">АИ-92</option>
+            <option value="АИ-95" selected>АИ-95</option>
+            <option value="АИ-98">АИ-98</option>
+            <option value="ДТ">ДТ</option>
+        </select>
+        <label>Цена (₽ за литр)</label>
+        <input type="number" id="fuelPrice" placeholder="55.5" step="0.01" min="0">
+        <button class="submit-btn" onclick="submitPrice()">💰 Отправить цену</button>
     </div>
 </div>
 
 <script>
-    /* ============================================================
-       НАСТРОЙКИ
-       ============================================================ */
+    // ============================================================
+    //  НАСТРОЙКИ
+    // ============================================================
     
-    // Радиус поиска в метрах
     const SEARCH_RADIUS = 5000;
+    const tg = window.Telegram.WebApp;
+    tg.expand();
     
-    /* ============================================================
-       ПЕРЕМЕННЫЕ
-       ============================================================ */
+    // ============================================================
+    //  ПЕРЕМЕННЫЕ
+    // ============================================================
     
     let userLocation = null;
     let map = null;
     let allStations = [];
     let currentFilter = 'all';
-    let reportsData = {};
+    let currentStation = { name: '', lat: 0, lon: 0 };
     
-    /* ============================================================
-       ПОЛУЧЕНИЕ ГЕОЛОКАЦИИ
-       ============================================================ */
+    // Кэш статусов и цен (для быстрого отображения)
+    let statusCache = {};
+    let priceCache = {};
+    
+    // ============================================================
+    //  ГЕОЛОКАЦИЯ
+    // ============================================================
     
     function getUserLocation() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
-                console.warn('Геолокация не поддерживается');
                 resolve({ lat: 55.7558, lon: 37.6173 });
                 return;
             }
-            
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    resolve({
-                        lat: pos.coords.latitude,
-                        lon: pos.coords.longitude
-                    });
-                },
-                (err) => {
-                    console.warn('Геолокация не доступна:', err.message);
-                    // Координаты по умолчанию — Москва
-                    resolve({ lat: 55.7558, lon: 37.6173 });
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                }
+                (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+                () => resolve({ lat: 55.7558, lon: 37.6173 }),
+                { enableHighAccuracy: true, timeout: 10000 }
             );
         });
     }
     
-    /* ============================================================
-       РАСЧЁТ РАССТОЯНИЯ (формула гаверсинуса)
-       ============================================================ */
-    
     function haversine(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Радиус Земли в км
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) ** 2 +
-                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                  Math.sin(dLon / 2) ** 2;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
         return R * 2 * Math.asin(Math.sqrt(a));
     }
     
-    /* ============================================================
-       ЗАГРУЗКА ЗАПРАВОК (OpenStreetMap Overpass API)
-       ============================================================ */
+    // ============================================================
+    //  ЗАГРУЗКА ЗАПРАВОК (OpenStreetMap)
+    // ============================================================
     
     async function loadStations() {
-        // Получаем геолокацию, если её нет
         if (!userLocation) {
             userLocation = await getUserLocation();
         }
         
         const { lat, lon } = userLocation;
-        
-        // Обновляем статус в шапке
         document.getElementById('statusLabel').textContent = 'Поиск...';
-        
-        // Показываем загрузчик
         document.getElementById('stationsList').innerHTML = `
-            <div class="loader">
-                <div class="spinner"></div>
-                <p style="margin-top:10px;">Загружаем заправки...</p>
-            </div>
+            <div class="loader"><div class="spinner"></div><p style="margin-top:10px;">Загружаем заправки...</p></div>
         `;
         
         try {
-            // Запрос к OpenStreetMap Overpass API
-            const query = `
-                [out:json];
-                (
-                    node["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon});
-                    way["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon});
-                );
-                out center;
-            `;
+            // Запрос к OpenStreetMap
+            const query = `[out:json];(node["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon});way["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon}););out center;`;
+            const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
             
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
             const elements = data.elements || [];
             
             if (elements.length === 0) {
                 document.getElementById('stationsList').innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">😔</div>
-                        <p>Заправок не найдено поблизости</p>
-                        <p style="font-size:12px;color:#888;margin-top:4px;">Попробуйте изменить местоположение</p>
-                    </div>
+                    <div class="empty-state"><div class="icon">😔</div><p>Заправок не найдено</p></div>
                 `;
                 document.getElementById('statusLabel').textContent = 'Ничего нет';
                 return;
             }
             
-            // Преобразуем данные OSM в наш формат
-            allStations = elements
-                .map((el, index) => {
-                    // Координаты
-                    let stationLat, stationLon;
-                    if (el.lat && el.lon) {
-                        stationLat = el.lat;
-                        stationLon = el.lon;
-                    } else if (el.center) {
-                        stationLat = el.center.lat;
-                        stationLon = el.center.lon;
-                    } else {
-                        return null;
-                    }
-                    
-                    // Название и адрес
-                    const tags = el.tags || {};
-                    const name = tags.name || 'АЗС';
-                    const address = tags['addr:street'] || '';
-                    const brand = tags.brand || '';
-                    
-                    // Расстояние
-                    const dist = haversine(lat, lon, stationLat, stationLon);
-                    
-                    // Статус: если пользователь уже отмечал — берём его, иначе примерный
-                    const savedStatus = reportsData[name]?.status || null;
-                    const statuses = ['green', 'yellow', 'red', 'gray'];
-                    const status = savedStatus || statuses[index % 4];
-                    
-                    // Примерные цены (в реальном проекте — из API)
-                    const basePrice92 = 58 + Math.random() * 15;
-                    const basePrice95 = 62 + Math.random() * 15;
-                    const basePriceDT = 60 + Math.random() * 15;
-                    
-                    return {
-                        name: name,
-                        address: address,
-                        brand: brand,
-                        lat: stationLat,
-                        lon: stationLon,
-                        distance: dist,
-                        status: status,
-                        fuels: [
-                            { name: 'АИ-92', price: basePrice92.toFixed(1) },
-                            { name: 'АИ-95', price: basePrice95.toFixed(1) },
-                            { name: 'ДТ', price: basePriceDT.toFixed(1) }
-                        ],
-                        reportTime: reportsData[name]?.time || null,
-                        reportUser: reportsData[name]?.user || null
-                    };
-                })
-                .filter(station => station !== null);
+            // Преобразуем данные
+            allStations = elements.map((el) => {
+                let stationLat, stationLon;
+                if (el.lat && el.lon) {
+                    stationLat = el.lat;
+                    stationLon = el.lon;
+                } else if (el.center) {
+                    stationLat = el.center.lat;
+                    stationLon = el.center.lon;
+                } else return null;
+                
+                const tags = el.tags || {};
+                const name = tags.name || 'АЗС';
+                const address = tags['addr:street'] || '';
+                const brand = tags.brand || '';
+                const dist = haversine(lat, lon, stationLat, stationLon);
+                
+                // Проверяем кэш статусов (localStorage)
+                const savedStatus = localStorage.getItem(`status_${name}`);
+                const savedUser = localStorage.getItem(`user_${name}`);
+                const savedTime = localStorage.getItem(`time_${name}`);
+                
+                const statuses = ['green', 'yellow', 'red', 'gray'];
+                const status = savedStatus || statuses[Math.floor(Math.random() * 3)];
+                
+                return {
+                    name: name,
+                    address: address,
+                    brand: brand,
+                    lat: stationLat,
+                    lon: stationLon,
+                    distance: dist,
+                    status: status,
+                    fuels: [
+                        { name: 'АИ-92', price: '—', from: null },
+                        { name: 'АИ-95', price: '—', from: null },
+                        { name: 'ДТ', price: '—', from: null }
+                    ],
+                    reportTime: savedTime || null,
+                    reportUser: savedUser || null
+                };
+            }).filter(s => s !== null);
             
-            // Сортировка: сначала зелёные, потом жёлтые, потом серые, потом красные
+            // Загружаем сохранённые статусы из localStorage
+            loadCachedData();
+            
+            // Сортируем
             const statusOrder = { green: 0, yellow: 1, gray: 2, red: 3 };
             allStations.sort((a, b) => {
-                const orderA = statusOrder[a.status] ?? 3;
-                const orderB = statusOrder[b.status] ?? 3;
+                const orderA = statusOrder[a.status] || 3;
+                const orderB = statusOrder[b.status] || 3;
                 if (orderA !== orderB) return orderA - orderB;
                 return a.distance - b.distance;
             });
             
-            // Отрисовываем
             renderStations(allStations);
             renderMap(allStations);
             document.getElementById('statusLabel').textContent = `${allStations.length} заправок`;
             
         } catch (error) {
-            console.error('Ошибка загрузки:', error);
+            console.error('Ошибка:', error);
             document.getElementById('stationsList').innerHTML = `
                 <div class="empty-state">
                     <div class="icon">⚠️</div>
                     <p>Ошибка загрузки</p>
-                    <div class="error-details">${error.message || 'Неизвестная ошибка'}</div>
+                    <div class="error-details">${error.message}</div>
                     <button class="retry-btn" onclick="loadStations()">↻ Повторить</button>
                 </div>
             `;
@@ -470,28 +467,40 @@
         }
     }
     
-    /* ============================================================
-       ОТОБРАЖЕНИЕ СПИСКА ЗАПРАВОК
-       ============================================================ */
+    // ============================================================
+    //  КЭШИРОВАНИЕ ДАННЫХ
+    // ============================================================
+    
+    function loadCachedData() {
+        // Загружаем статусы из localStorage
+        for (let key in localStorage) {
+            if (key.startsWith('status_')) {
+                const name = key.replace('status_', '');
+                const status = localStorage.getItem(key);
+                const station = allStations.find(s => s.name === name);
+                if (station) {
+                    station.status = status;
+                    station.reportTime = localStorage.getItem(`time_${name}`);
+                    station.reportUser = localStorage.getItem(`user_${name}`);
+                }
+            }
+        }
+    }
+    
+    // ============================================================
+    //  ОТОБРАЖЕНИЕ
+    // ============================================================
     
     function renderStations(stations) {
-        // Фильтрация
-        const filtered = stations.filter(s => {
-            if (currentFilter === 'all') return true;
-            return s.status === currentFilter;
-        });
+        const filtered = stations.filter(s => currentFilter === 'all' || s.status === currentFilter);
         
         if (filtered.length === 0) {
             document.getElementById('stationsList').innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">🔍</div>
-                    <p>Нет заправок с таким статусом</p>
-                </div>
+                <div class="empty-state"><div class="icon">🔍</div><p>Нет заправок с таким статусом</p></div>
             `;
             return;
         }
         
-        // Статусы
         const statusMap = {
             green: { text: '✅ Есть топливо', class: 'green' },
             yellow: { text: '🟡 Очередь / лимиты', class: 'yellow' },
@@ -503,6 +512,15 @@
         filtered.forEach((station) => {
             const statusInfo = statusMap[station.status] || statusMap.gray;
             
+            // Отображаем цены, если есть
+            const fuelHtml = station.fuels.map(f => `
+                <span class="fuel-tag">
+                    ${f.name}
+                    <span class="price">${f.price}</span>
+                    ${f.from ? `<span class="from-user">от ${f.from}</span>` : ''}
+                </span>
+            `).join('');
+            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
@@ -511,18 +529,12 @@
                     <div class="distance">📏 ${station.distance.toFixed(2)} км</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
                     ${station.reportTime ? `<div class="report-time">⏱ Обновлено: ${station.reportTime} (от ${station.reportUser || 'аноним'})</div>` : ''}
-                    <div class="fuels">
-                        ${station.fuels.map(f => `
-                            <span class="fuel-tag">
-                                ${f.name}
-                                <span class="price">${f.price} ₽</span>
-                            </span>
-                        `).join('')}
-                    </div>
+                    <div class="fuels">${fuelHtml}</div>
                     <div class="report-buttons">
                         <button class="report-btn green" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'green')">✅ Есть</button>
                         <button class="report-btn yellow" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'yellow')">🟡 Очередь</button>
                         <button class="report-btn red" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'red')">❌ Нет</button>
+                        <button class="report-btn price-btn" onclick="openPriceModal('${station.name.replace(/'/g, "\\'")}', ${station.lat}, ${station.lon})">💰 Цена</button>
                     </div>
                 </div>
             `;
@@ -531,137 +543,173 @@
         document.getElementById('stationsList').innerHTML = html;
     }
     
-    /* ============================================================
-       ОТОБРАЖЕНИЕ КАРТЫ (Leaflet)
-       ============================================================ */
-    
     function renderMap(stations) {
-        // Удаляем старую карту, если есть
-        if (map) {
-            map.remove();
-            map = null;
-        }
-        
+        if (map) { map.remove(); map = null; }
         if (!userLocation) return;
         
-        // Создаём карту
         map = L.map('map').setView([userLocation.lat, userLocation.lon], 14);
-        
-        // Тайлы OpenStreetMap (бесплатно, без ключа)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            attribution: '© OpenStreetMap',
             maxZoom: 19
         }).addTo(map);
         
         // Маркер пользователя
-        const userIcon = L.divIcon({
-            html: '<div style="background:#e53935;border-radius:50%;width:16px;height:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
-            className: '',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        });
-        L.marker([userLocation.lat, userLocation.lon], { icon: userIcon })
+        L.marker([userLocation.lat, userLocation.lon])
             .addTo(map)
             .bindPopup('📍 Вы здесь');
         
-        // Цветные маркеры для заправок
-        const statusColors = {
-            green: '#4caf50',
-            yellow: '#ff9800',
-            red: '#f44336',
-            gray: '#999'
-        };
-        
+        // Цветные маркеры
+        const statusColors = { green: '#4caf50', yellow: '#ff9800', red: '#f44336', gray: '#999' };
         stations.forEach(station => {
-            const color = statusColors[station.status] || statusColors.gray;
+            const color = statusColors[station.status] || '#999';
             const icon = L.divIcon({
                 html: `<div style="background:${color};border-radius:50%;width:14px;height:14px;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>`,
                 className: '',
                 iconSize: [14, 14],
                 iconAnchor: [7, 7]
             });
-            
             L.marker([station.lat, station.lon], { icon })
                 .addTo(map)
-                .bindPopup(`
-                    <b>${station.name}</b><br>
-                    ${station.address || ''}<br>
-                    📏 ${station.distance.toFixed(2)} км
-                `);
+                .bindPopup(`<b>${station.name}</b><br>${station.address}`);
         });
         
-        // Обновляем размер карты (исправляет баг с отображением)
-        setTimeout(() => {
-            if (map) map.invalidateSize();
-        }, 400);
+        setTimeout(() => map.invalidateSize(), 300);
     }
     
-    /* ============================================================
-       УСТАНОВКА СТАТУСА (как в «ГдеБЕНЗ»)
-       ============================================================ */
+    // ============================================================
+    //  УСТАНОВКА СТАТУСА (ОТПРАВКА В БОТА)
+    // ============================================================
     
     function setStatus(name, status) {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        const user = 'пользователь';
+        const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         
-        // Сохраняем статус в память
-        reportsData[name] = {
-            status: status,
-            time: timeStr,
-            user: user
-        };
+        // Сохраняем локально
+        localStorage.setItem(`status_${name}`, status);
+        localStorage.setItem(`time_${name}`, timeStr);
+        localStorage.setItem(`user_${name}`, 'я');
         
         // Обновляем в allStations
         const station = allStations.find(s => s.name === name);
         if (station) {
             station.status = status;
             station.reportTime = timeStr;
-            station.reportUser = user;
+            station.reportUser = 'я';
+        }
+        
+        // Отправляем в бота
+        const data = {
+            action: 'status',
+            station: name,
+            lat: station ? station.lat : 0,
+            lon: station ? station.lon : 0,
+            status: status
+        };
+        
+        try {
+            tg.sendData(JSON.stringify(data));
+            showToast('✅ Статус отправлен в бота!');
+        } catch (e) {
+            showToast('⚠️ Не удалось отправить в бота');
         }
         
         // Перерисовываем
         renderStations(allStations);
         renderMap(allStations);
-        
-        // Уведомление
-        const statusMap = {
-            green: '✅ Есть топливо',
-            yellow: '🟡 Очередь / лимиты',
-            red: '❌ Нет топлива',
-            gray: '❓ Нет данных'
-        };
-        alert(`✅ Статус обновлён: ${statusMap[status] || status}`);
     }
     
-    /* ============================================================
-       ФИЛЬТРЫ
-       ============================================================ */
+    // ============================================================
+    //  МОДАЛЬНОЕ ОКНО ДЛЯ ЦЕНЫ
+    // ============================================================
+    
+    function openPriceModal(name, lat, lon) {
+        currentStation = { name, lat, lon };
+        document.getElementById('modalStationName').textContent = `⛽ ${name}`;
+        document.getElementById('priceModal').classList.add('active');
+        document.getElementById('fuelPrice').focus();
+    }
+    
+    function closePriceModal() {
+        document.getElementById('priceModal').classList.remove('active');
+    }
+    
+    function submitPrice() {
+        const fuelType = document.getElementById('fuelType').value;
+        const price = parseFloat(document.getElementById('fuelPrice').value);
+        
+        if (!price || price <= 0) {
+            showToast('⚠️ Введите корректную цену');
+            return;
+        }
+        
+        const data = {
+            action: 'price',
+            station: currentStation.name,
+            lat: currentStation.lat,
+            lon: currentStation.lon,
+            fuel: fuelType,
+            price: price
+        };
+        
+        try {
+            tg.sendData(JSON.stringify(data));
+            showToast('💰 Цена отправлена в бота!');
+            closePriceModal();
+        } catch (e) {
+            showToast('⚠️ Не удалось отправить');
+        }
+    }
+    
+    // ============================================================
+    //  TOAST-УВЕДОМЛЕНИЯ
+    // ============================================================
+    
+    function showToast(message) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    // ============================================================
+    //  ФИЛЬТРЫ
+    // ============================================================
     
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            // Убираем активный класс у всех
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            // Ставим текущему
             this.classList.add('active');
-            // Применяем фильтр
             currentFilter = this.dataset.filter;
             renderStations(allStations);
         });
     });
     
-    /* ============================================================
-       ЗАПУСК
-       ============================================================ */
+    // ============================================================
+    //  ЗАКРЫТИЕ МОДАЛКИ ПО КЛИКУ НА ФОН
+    // ============================================================
+    
+    document.getElementById('priceModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('priceModal')) closePriceModal();
+    });
+    
+    // ============================================================
+    //  ЗАПУСК
+    // ============================================================
     
     document.addEventListener('DOMContentLoaded', async () => {
+        tg.ready();
         userLocation = await getUserLocation();
         loadStations();
     });
 </script>
-
 </body>
 </html>
