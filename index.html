@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Бензин есть?</title>
+    <title>Бензин есть? — по всей России</title>
     
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Leaflet.js для карты -->
+    <!-- Leaflet.js -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -30,9 +30,17 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            flex-wrap: wrap;
+            gap: 8px;
         }
         .header h1 { font-size: 17px; font-weight: 600; }
         .header .status { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
         .refresh-btn {
             background: none;
             border: 1px solid var(--tg-theme-hint-color, #ddd);
@@ -42,6 +50,61 @@
             cursor: pointer;
             color: var(--tg-theme-text-color, #000);
         }
+        .refresh-btn:active { background: var(--tg-theme-hint-color, #ddd); }
+        
+        /* ===== ПОИСК ПО ГОРОДАМ ===== */
+        .search-bar {
+            padding: 8px 16px;
+            display: flex;
+            gap: 8px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ddd);
+            flex-wrap: wrap;
+        }
+        .search-bar input {
+            flex: 1;
+            min-width: 150px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            font-size: 14px;
+        }
+        .search-bar input::placeholder {
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .search-bar .search-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .search-bar .search-btn:active { opacity: 0.7; }
+        .search-bar .geo-btn {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .search-bar .geo-btn:active { background: var(--tg-theme-hint-color, #ddd); }
+        .search-bar .city-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        
         .filter-bar {
             padding: 8px 16px;
             display: flex;
@@ -68,7 +131,7 @@
         #map { width: 100%; height: 35vh; min-height: 200px; background: #e5e5e5; }
         .stations-container {
             padding: 12px 16px;
-            max-height: calc(100vh - 35vh - 110px);
+            max-height: calc(100vh - 35vh - 180px);
             overflow-y: auto;
         }
         .station-card {
@@ -100,18 +163,19 @@
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
         
-        /* ГРУППА КНОПОК СТАТУСА - УВЕЛИЧЕНЫ */
         .station-card .status-buttons {
             display: flex;
             gap: 6px;
             margin: 8px 0;
+            flex-wrap: wrap;
         }
         .station-card .status-btn {
             flex: 1;
+            min-width: 50px;
             border: none;
             border-radius: 8px;
             padding: 8px 4px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: opacity 0.2s, transform 0.1s;
@@ -129,7 +193,7 @@
             background: var(--tg-theme-button-color, #2481cc); 
             color: #fff;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 11px;
         }
         
         .report-time { font-size: 10px; color: var(--tg-theme-hint-color, #888); margin-top: 4px; }
@@ -178,7 +242,7 @@
             from { opacity: 0; transform: translateX(-50%) translateY(20px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
-        .modal { /* Стили для модального окна */
+        .modal {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -234,6 +298,23 @@
             width: 100%;
         }
         .modal .submit-btn:active { opacity: 0.7; }
+        
+        .city-badge {
+            display: inline-block;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        @media (max-width: 480px) {
+            .header { padding: 8px 12px; }
+            .header h1 { font-size: 15px; }
+            .search-bar input { font-size: 13px; padding: 6px 10px; }
+            .search-bar .search-btn { font-size: 13px; padding: 6px 12px; }
+            .station-card .status-btn { font-size: 11px; padding: 6px 2px; }
+        }
     </style>
 </head>
 <body>
@@ -241,10 +322,18 @@
 <!-- ШАПКА -->
 <div class="header">
     <h1>⛽ Бензин есть?</h1>
-    <div>
+    <div class="header-controls">
         <span class="status" id="statusLabel">Загрузка...</span>
         <button class="refresh-btn" onclick="loadStations()">🔄</button>
     </div>
+</div>
+
+<!-- ПОИСК ПО ГОРОДАМ -->
+<div class="search-bar">
+    <input type="text" id="cityInput" placeholder="Введите город..." value="Москва">
+    <button class="search-btn" onclick="searchCity()">🔍 Найти</button>
+    <button class="geo-btn" onclick="useMyLocation()">📍 Моё место</button>
+    <span class="city-label" id="cityLabel">📍 Москва</span>
 </div>
 
 <!-- ФИЛЬТРЫ -->
@@ -284,23 +373,54 @@
 </div>
 
 <script>
-    // НАСТРОЙКИ
+    // ============================================================
+    //  НАСТРОЙКИ
+    // ============================================================
+    
     const SEARCH_RADIUS = 5000;
     const tg = window.Telegram.WebApp;
     tg.expand();
-
-    // ПЕРЕМЕННЫЕ
+    
+    // ============================================================
+    //  ПЕРЕМЕННЫЕ
+    // ============================================================
+    
     let userLocation = null;
     let map = null;
     let allStations = [];
     let currentFilter = 'all';
     let currentStation = { name: '', lat: 0, lon: 0 };
-
-    // Кэш в localStorage для быстрого отображения
-    let statusCache = {};
-    let priceCache = {};
-
-    // ГЕОЛОКАЦИЯ
+    let currentCity = 'Москва';
+    
+    // ============================================================
+    //  ГЕОКОДИРОВАНИЕ (поиск координат по названию города)
+    // ============================================================
+    
+    async function geocodeCity(cityName) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1&countrycodes=ru`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.length === 0) {
+                throw new Error('Город не найден');
+            }
+            
+            return {
+                lat: parseFloat(data[0].lat),
+                lon: parseFloat(data[0].lon),
+                displayName: data[0].display_name
+            };
+        } catch (error) {
+            console.error('Ошибка геокодирования:', error);
+            return null;
+        }
+    }
+    
+    // ============================================================
+    //  ГЕОЛОКАЦИЯ
+    // ============================================================
+    
     function getUserLocation() {
         return new Promise((resolve) => {
             if (!navigator.geolocation) {
@@ -314,7 +434,7 @@
             );
         });
     }
-
+    
     function haversine(lat1, lon1, lat2, lon2) {
         const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -322,36 +442,110 @@
         const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2)**2;
         return R * 2 * Math.asin(Math.sqrt(a));
     }
-
-    // ЗАГРУЗКА ЗАПРАВОК (OpenStreetMap)
+    
+    // ============================================================
+    //  ПОИСК ПО ГОРОДУ
+    // ============================================================
+    
+    async function searchCity() {
+        const input = document.getElementById('cityInput');
+        const cityName = input.value.trim();
+        
+        if (!cityName) {
+            showToast('⚠️ Введите название города');
+            return;
+        }
+        
+        const coords = await geocodeCity(cityName);
+        if (!coords) {
+            showToast('⚠️ Город не найден. Проверьте название.');
+            return;
+        }
+        
+        currentCity = cityName;
+        document.getElementById('cityLabel').textContent = `📍 ${cityName}`;
+        userLocation = { lat: coords.lat, lon: coords.lon };
+        loadStations();
+    }
+    
+    // ============================================================
+    //  ИСПОЛЬЗОВАТЬ МОЁ МЕСТОПОЛОЖЕНИЕ
+    // ============================================================
+    
+    async function useMyLocation() {
+        const loc = await getUserLocation();
+        userLocation = { lat: loc.lat, lon: loc.lon };
+        
+        // Пытаемся определить город по координатам
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${loc.lat}&lon=${loc.lon}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            if (data.address && data.address.city) {
+                currentCity = data.address.city;
+            } else if (data.address && data.address.town) {
+                currentCity = data.address.town;
+            } else if (data.address && data.address.village) {
+                currentCity = data.address.village;
+            } else {
+                currentCity = `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`;
+            }
+        } catch (e) {
+            currentCity = `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`;
+        }
+        
+        document.getElementById('cityInput').value = currentCity;
+        document.getElementById('cityLabel').textContent = `📍 ${currentCity}`;
+        loadStations();
+    }
+    
+    // ============================================================
+    //  ЗАГРУЗКА ЗАПРАВОК (OpenStreetMap)
+    // ============================================================
+    
     async function loadStations() {
         if (!userLocation) {
             userLocation = await getUserLocation();
+            const loc = userLocation;
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?lat=${loc.lat}&lon=${loc.lon}&format=json`;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.address && data.address.city) currentCity = data.address.city;
+                else if (data.address && data.address.town) currentCity = data.address.town;
+                else currentCity = `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`;
+                document.getElementById('cityInput').value = currentCity;
+                document.getElementById('cityLabel').textContent = `📍 ${currentCity}`;
+            } catch (e) {}
         }
-
+        
         const { lat, lon } = userLocation;
         document.getElementById('statusLabel').textContent = 'Поиск...';
         document.getElementById('stationsList').innerHTML = `
             <div class="loader"><div class="spinner"></div><p style="margin-top:10px;">Загружаем заправки...</p></div>
         `;
-
+        
         try {
             const query = `[out:json];(node["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon});way["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon}););out center;`;
             const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
-
+            
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
+            
             const data = await response.json();
             const elements = data.elements || [];
-
+            
             if (elements.length === 0) {
                 document.getElementById('stationsList').innerHTML = `
-                    <div class="empty-state"><div class="icon">😔</div><p>Заправок не найдено</p></div>
+                    <div class="empty-state">
+                        <div class="icon">😔</div>
+                        <p>Заправок не найдено в ${currentCity}</p>
+                        <p style="font-size:12px;color:#888;margin-top:4px;">Попробуйте другой город</p>
+                    </div>
                 `;
                 document.getElementById('statusLabel').textContent = 'Ничего нет';
                 return;
             }
-
+            
             allStations = elements.map((el) => {
                 let stationLat, stationLon;
                 if (el.lat && el.lon) {
@@ -361,20 +555,20 @@
                     stationLat = el.center.lat;
                     stationLon = el.center.lon;
                 } else return null;
-
+                
                 const tags = el.tags || {};
                 const name = tags.name || 'АЗС';
                 const address = tags['addr:street'] || '';
                 const brand = tags.brand || '';
                 const dist = haversine(lat, lon, stationLat, stationLon);
-
-                const savedStatus = localStorage.getItem(`status_${name}`);
-                const savedUser = localStorage.getItem(`user_${name}`);
-                const savedTime = localStorage.getItem(`time_${name}`);
-
+                
+                const savedStatus = localStorage.getItem(`status_${name}_${currentCity}`);
+                const savedUser = localStorage.getItem(`user_${name}_${currentCity}`);
+                const savedTime = localStorage.getItem(`time_${name}_${currentCity}`);
+                
                 const statuses = ['green', 'yellow', 'red', 'gray'];
                 const status = savedStatus || statuses[Math.floor(Math.random() * 3)];
-
+                
                 return {
                     name: name,
                     address: address,
@@ -384,11 +578,11 @@
                     distance: dist,
                     status: status,
                     reportTime: savedTime || null,
-                    reportUser: savedUser || null
+                    reportUser: savedUser || null,
+                    city: currentCity
                 };
             }).filter(s => s !== null);
-
-            // Сортировка по статусу
+            
             const statusOrder = { green: 0, yellow: 1, gray: 2, red: 3 };
             allStations.sort((a, b) => {
                 const orderA = statusOrder[a.status] || 3;
@@ -396,11 +590,11 @@
                 if (orderA !== orderB) return orderA - orderB;
                 return a.distance - b.distance;
             });
-
+            
             renderStations(allStations);
             renderMap(allStations);
-            document.getElementById('statusLabel').textContent = `${allStations.length} заправок`;
-
+            document.getElementById('statusLabel').textContent = `${allStations.length} заправок в ${currentCity}`;
+            
         } catch (error) {
             console.error('Ошибка:', error);
             document.getElementById('stationsList').innerHTML = `
@@ -414,29 +608,32 @@
             document.getElementById('statusLabel').textContent = 'Ошибка';
         }
     }
-
-    // ОТОБРАЖЕНИЕ СПИСКА
+    
+    // ============================================================
+    //  ОТОБРАЖЕНИЕ
+    // ============================================================
+    
     function renderStations(stations) {
         const filtered = stations.filter(s => currentFilter === 'all' || s.status === currentFilter);
-
+        
         if (filtered.length === 0) {
             document.getElementById('stationsList').innerHTML = `
                 <div class="empty-state"><div class="icon">🔍</div><p>Нет заправок с таким статусом</p></div>
             `;
             return;
         }
-
+        
         const statusMap = {
             green: { text: '✅ Есть топливо', class: 'green' },
             yellow: { text: '🟡 Очередь / лимиты', class: 'yellow' },
             red: { text: '❌ Нет топлива', class: 'red' },
             gray: { text: '❓ Нет данных', class: 'gray' }
         };
-
+        
         let html = '';
         filtered.forEach((station) => {
             const statusInfo = statusMap[station.status] || statusMap.gray;
-
+            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
@@ -446,7 +643,6 @@
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
                     ${station.reportTime ? `<div class="report-time">⏱ Обновлено: ${station.reportTime} (от ${station.reportUser || 'аноним'})</div>` : ''}
                     
-                    <!-- НОВЫЕ БОЛЬШИЕ КНОПКИ СТАТУСА -->
                     <div class="status-buttons">
                         <button class="status-btn green" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'green')">✅ Есть</button>
                         <button class="status-btn yellow" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'yellow')">🟡 Очередь</button>
@@ -456,26 +652,25 @@
                 </div>
             `;
         });
-
+        
         document.getElementById('stationsList').innerHTML = html;
     }
-
-    // ОТОБРАЖЕНИЕ КАРТЫ
+    
     function renderMap(stations) {
         if (map) { map.remove(); map = null; }
         if (!userLocation) return;
-
+        
         map = L.map('map').setView([userLocation.lat, userLocation.lon], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap',
             maxZoom: 19
         }).addTo(map);
-
-        // Маркер пользователя
+        
+        // Маркер центра города
         L.marker([userLocation.lat, userLocation.lon])
             .addTo(map)
-            .bindPopup('📍 Вы здесь');
-
+            .bindPopup(`📍 ${currentCity}`);
+        
         const statusColors = { green: '#4caf50', yellow: '#ff9800', red: '#f44336', gray: '#999' };
         stations.forEach(station => {
             const color = statusColors[station.status] || '#999';
@@ -489,79 +684,84 @@
                 .addTo(map)
                 .bindPopup(`<b>${station.name}</b><br>${station.address}`);
         });
-
+        
         setTimeout(() => map.invalidateSize(), 300);
     }
-
-    // УСТАНОВКА СТАТУСА (ОТПРАВКА В БОТА)
+    
+    // ============================================================
+    //  УСТАНОВКА СТАТУСА
+    // ============================================================
+    
     function setStatus(name, status) {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
-        // Сохраняем локально
-        localStorage.setItem(`status_${name}`, status);
-        localStorage.setItem(`time_${name}`, timeStr);
-        localStorage.setItem(`user_${name}`, 'я');
-
-        // Обновляем в allStations
+        const keySuffix = `_${currentCity}`;
+        
+        localStorage.setItem(`status_${name}${keySuffix}`, status);
+        localStorage.setItem(`time_${name}${keySuffix}`, timeStr);
+        localStorage.setItem(`user_${name}${keySuffix}`, 'я');
+        
         const station = allStations.find(s => s.name === name);
         if (station) {
             station.status = status;
             station.reportTime = timeStr;
             station.reportUser = 'я';
         }
-
-        // Отправляем в бота
+        
         const data = {
             action: 'status',
             station: name,
             lat: station ? station.lat : 0,
             lon: station ? station.lon : 0,
-            status: status
+            status: status,
+            city: currentCity
         };
-
+        
         try {
             tg.sendData(JSON.stringify(data));
             showToast('✅ Статус отправлен в бота!');
         } catch (e) {
             showToast('⚠️ Не удалось отправить в бота');
         }
-
-        // Перерисовываем
+        
         renderStations(allStations);
         renderMap(allStations);
     }
-
-    // МОДАЛЬНОЕ ОКНО ДЛЯ ЦЕНЫ
+    
+    // ============================================================
+    //  МОДАЛКА ДЛЯ ЦЕНЫ
+    // ============================================================
+    
     function openPriceModal(name, lat, lon) {
         currentStation = { name, lat, lon };
         document.getElementById('modalStationName').textContent = `⛽ ${name}`;
         document.getElementById('priceModal').classList.add('active');
         document.getElementById('fuelPrice').focus();
     }
-
+    
     function closePriceModal() {
         document.getElementById('priceModal').classList.remove('active');
     }
-
+    
     function submitPrice() {
         const fuelType = document.getElementById('fuelType').value;
         const price = parseFloat(document.getElementById('fuelPrice').value);
-
+        
         if (!price || price <= 0) {
             showToast('⚠️ Введите корректную цену');
             return;
         }
-
+        
         const data = {
             action: 'price',
             station: currentStation.name,
             lat: currentStation.lat,
             lon: currentStation.lon,
             fuel: fuelType,
-            price: price
+            price: price,
+            city: currentCity
         };
-
+        
         try {
             tg.sendData(JSON.stringify(data));
             showToast('💰 Цена отправлена в бота!');
@@ -570,25 +770,31 @@
             showToast('⚠️ Не удалось отправить');
         }
     }
-
-    // TOAST-УВЕДОМЛЕНИЯ
+    
+    // ============================================================
+    //  TOAST
+    // ============================================================
+    
     function showToast(message) {
         const existing = document.querySelector('.toast');
         if (existing) existing.remove();
-
+        
         const toast = document.createElement('div');
         toast.className = 'toast';
         toast.textContent = message;
         document.body.appendChild(toast);
-
+        
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transition = 'opacity 0.3s';
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
-
-    // ФИЛЬТРЫ
+    
+    // ============================================================
+    //  ФИЛЬТРЫ
+    // ============================================================
+    
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -597,17 +803,29 @@
             renderStations(allStations);
         });
     });
-
-    // ЗАКРЫТИЕ МОДАЛКИ ПО КЛИКУ НА ФОН
+    
+    // ============================================================
+    //  ЗАКРЫТИЕ МОДАЛКИ
+    // ============================================================
+    
     document.getElementById('priceModal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('priceModal')) closePriceModal();
     });
-
-    // ЗАПУСК
+    
+    // ============================================================
+    //  ЗАПУСК
+    // ============================================================
+    
     document.addEventListener('DOMContentLoaded', async () => {
         tg.ready();
-        userLocation = await getUserLocation();
-        loadStations();
+        await useMyLocation();
+    });
+    
+    // Поиск по Enter
+    document.getElementById('cityInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            searchCity();
+        }
     });
 </script>
 </body>
