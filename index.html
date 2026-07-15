@@ -329,11 +329,11 @@
 
 <script>
     // ============================================================
-    //  НАСТРОЙКИ — 2ГИС (ПРАВИЛЬНЫЙ API)
+    //  НАСТРОЙКИ
     // ============================================================
     
-    const SEARCH_RADIUS = 5000;
     const GIS_API_KEY = "8c80d936-5501-4f03-8bb1-b0edf20f3b4a";
+    const SEARCH_RADIUS = 5000;
     
     const tg = window.Telegram.WebApp;
     tg.expand();
@@ -486,7 +486,7 @@
     }
     
     // ============================================================
-    //  ЗАГРУЗКА ЗАПРАВОК (2ГИС — ПРАВИЛЬНЫЙ ЭНДПОИНТ)
+    //  ЗАГРУЗКА ЗАПРАВОК (2ГИС)
     // ============================================================
     
     async function loadStations() {
@@ -502,25 +502,45 @@
         `;
         
         try {
-            // ПРАВИЛЬНЫЙ эндпоинт для Places API 2ГИС
-            const url = `https://catalog.api.2gis.com/3.0/items?q=АЗС&location=${lon},${lat}&key=${GIS_API_KEY}&type=branch&fields=items.name,items.address_name,items.point&sort=distance&page_size=20`;
+            // Пробуем простой запрос к 2ГИС
+            const url = `https://catalog.api.2gis.com/3.0/items?q=АЗС&location=${lon},${lat}&key=${GIS_API_KEY}&type=branch&fields=items.name,items.address_name&sort=distance&page_size=20`;
+            
+            console.log('Запрос к 2ГИС:', url);
+            
             const response = await fetch(url);
+            
+            // Логируем статус
+            console.log('Статус ответа:', response.status);
             
             if (!response.ok) {
                 if (response.status === 403) {
-                    throw new Error('Ключ 2ГИС неактивен. Проверьте личный кабинет.');
+                    throw new Error('❌ Ключ 2ГИС неактивен или заблокирован. Проверьте личный кабинет.');
+                }
+                if (response.status === 401) {
+                    throw new Error('❌ Неверный ключ 2ГИС. Проверьте правильность ключа.');
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
+            console.log('Ответ 2ГИС:', data);
             
-            // Проверяем ответ
-            if (data.meta && data.meta.code !== 200) {
-                throw new Error(`2ГИС ошибка: ${data.meta.message || 'Неизвестная ошибка'}`);
+            // Проверяем meta
+            if (data.meta) {
+                if (data.meta.code === 401 || data.meta.code === 403) {
+                    throw new Error(`❌ Ошибка авторизации: ${data.meta.message || 'Проверьте ключ'}`);
+                }
+                if (data.meta.code !== 200) {
+                    throw new Error(`❌ 2ГИС ошибка (${data.meta.code}): ${data.meta.message || 'Неизвестная ошибка'}`);
+                }
             }
             
-            const items = data.result?.items || [];
+            // Проверяем наличие результата
+            if (!data.result || !data.result.items) {
+                throw new Error('❌ Неожиданный формат ответа от 2ГИС');
+            }
+            
+            const items = data.result.items || [];
             
             if (items.length === 0) {
                 document.getElementById('stationsList').innerHTML = `
@@ -538,11 +558,10 @@
             allStations = items.map((item, index) => {
                 const name = item.name || 'АЗС';
                 const address = item.address_name || '';
-                // Координаты в 2ГИС приходят в поле point
-                const point = item.point || {};
-                const stationLat = point.lat || 0;
-                const stationLon = point.lon || 0;
-                const dist = haversine(lat, lon, stationLat, stationLon);
+                // Координаты могут быть в разных полях
+                const lat2 = item.lat || 0;
+                const lon2 = item.lon || 0;
+                const dist = haversine(lat, lon, lat2, lon2);
                 
                 const keySuffix = `_${currentCity}`;
                 const savedStatus = localStorage.getItem(`status_${name}${keySuffix}`);
@@ -556,8 +575,8 @@
                     name: name,
                     address: address,
                     brand: '',
-                    lat: stationLat,
-                    lon: stationLon,
+                    lat: lat2,
+                    lon: lon2,
                     distance: dist,
                     status: status,
                     reportTime: savedTime || null,
