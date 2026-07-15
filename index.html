@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Бензин есть?</title>
+    <title>Бензин есть? — 2ГИС</title>
     
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://mapgl.2gis.com/api/css/v1/mapgl.css" />
+    <script src="https://mapgl.2gis.com/api/js/v1/mapgl.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #ffffff;
-            color: #000000;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
             min-height: 100vh;
         }
         .header {
-            background: #f0f0f0;
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
             padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #ccc;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ccc);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -32,40 +32,40 @@
             gap: 8px;
         }
         .header h1 { font-size: 17px; font-weight: 600; }
-        .header .status { font-size: 12px; color: #888; }
+        .header .status { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
         .header-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .refresh-btn {
             background: none;
-            border: 1px solid #ddd;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
             border-radius: 6px;
             padding: 4px 10px;
             font-size: 14px;
             cursor: pointer;
-            color: #000;
+            color: var(--tg-theme-text-color, #000);
         }
-        .refresh-btn:active { background: #ddd; }
+        .refresh-btn:active { background: var(--tg-theme-hint-color, #ddd); }
         
         .weather-bar {
             padding: 8px 16px;
             display: flex;
             align-items: center;
             gap: 12px;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ddd;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ddd);
             flex-wrap: wrap;
         }
         .weather-bar .weather-icon { font-size: 28px; line-height: 1; }
         .weather-bar .weather-temp { font-size: 22px; font-weight: 700; }
-        .weather-bar .weather-desc { font-size: 14px; color: #666; }
-        .weather-bar .weather-details { font-size: 12px; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
-        .weather-bar .weather-update { font-size: 10px; color: #999; margin-left: auto; }
+        .weather-bar .weather-desc { font-size: 14px; color: var(--tg-theme-hint-color, #666); }
+        .weather-bar .weather-details { font-size: 12px; color: var(--tg-theme-hint-color, #888); display: flex; gap: 12px; flex-wrap: wrap; }
+        .weather-bar .weather-update { font-size: 10px; color: var(--tg-theme-hint-color, #999); margin-left: auto; }
         
         .search-bar {
             padding: 8px 16px;
             display: flex;
             gap: 8px;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ddd;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ddd);
             flex-wrap: wrap;
         }
         .search-bar input {
@@ -73,17 +73,17 @@
             min-width: 150px;
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #fff;
-            color: #000;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
             font-size: 14px;
         }
-        .search-bar input::placeholder { color: #888; }
+        .search-bar input::placeholder { color: var(--tg-theme-hint-color, #888); }
         .search-bar .search-btn {
             padding: 8px 16px;
             border-radius: 8px;
             border: none;
-            background: #2481cc;
+            background: var(--tg-theme-button-color, #2481cc);
             color: #fff;
             font-size: 14px;
             font-weight: 600;
@@ -94,37 +94,37 @@
         .search-bar .geo-btn {
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #fff;
-            color: #000;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
             font-size: 14px;
             cursor: pointer;
             white-space: nowrap;
         }
-        .search-bar .geo-btn:active { background: #ddd; }
+        .search-bar .geo-btn:active { background: var(--tg-theme-hint-color, #ddd); }
         
         .filter-bar {
             padding: 8px 16px;
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            background: #f5f5f5;
-            border-bottom: 1px solid #ddd;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-bottom: 1px solid var(--tg-theme-hint-color, #ddd);
         }
         .filter-btn {
             padding: 4px 12px;
             border-radius: 14px;
-            border: 1px solid #ddd;
-            background: #fff;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-bg-color, #fff);
             font-size: 12px;
             cursor: pointer;
             white-space: nowrap;
-            color: #000;
+            color: var(--tg-theme-text-color, #000);
         }
         .filter-btn.active {
-            background: #2481cc;
+            background: var(--tg-theme-button-color, #2481cc);
             color: #fff;
-            border-color: #2481cc;
+            border-color: var(--tg-theme-button-color, #2481cc);
         }
         #map { width: 100%; height: 35vh; min-height: 200px; background: #e5e5e5; }
         .stations-container {
@@ -133,21 +133,20 @@
             overflow-y: auto;
         }
         .station-card {
-            background: #f8f8f8;
+            background: var(--tg-theme-secondary-bg-color, #f8f8f8);
             border-radius: 10px;
             padding: 12px 14px;
             margin-bottom: 10px;
             border-left: 4px solid #999;
-            border: 1px solid #e0e0e0;
-            transition: all 0.2s;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
         }
         .station-card.status-green { border-left-color: #4caf50; }
         .station-card.status-yellow { border-left-color: #ff9800; }
         .station-card.status-red { border-left-color: #f44336; }
         .station-card.status-gray { border-left-color: #999; }
         .station-card .name { font-size: 15px; font-weight: 600; }
-        .station-card .address { font-size: 12px; color: #666; margin: 4px 0; }
-        .station-card .distance { font-size: 12px; color: #888; }
+        .station-card .address { font-size: 12px; color: var(--tg-theme-hint-color, #666); margin: 4px 0; }
+        .station-card .distance { font-size: 12px; color: var(--tg-theme-hint-color, #888); }
         .station-card .status-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -172,38 +171,37 @@
             cursor: pointer;
             text-align: center;
             color: #fff;
-            transition: transform 0.1s;
         }
-        .station-card .status-btn:active { opacity: 0.7; transform: scale(0.95); }
+        .station-card .status-btn:active { opacity: 0.7; }
         .status-btn.green { background: #4caf50; }
         .status-btn.yellow { background: #ff9800; }
         .status-btn.red { background: #f44336; }
-        .status-btn.price-btn { background: #2481cc; color: #fff; font-weight: 600; font-size: 11px; }
-        .report-time { font-size: 10px; color: #888; margin-top: 4px; }
+        .status-btn.price-btn { background: var(--tg-theme-button-color, #2481cc); color: #fff; font-weight: 600; font-size: 11px; }
+        .report-time { font-size: 10px; color: var(--tg-theme-hint-color, #888); margin-top: 4px; }
         
-        .loader { text-align: center; padding: 30px; color: #888; }
+        .loader { text-align: center; padding: 30px; color: var(--tg-theme-hint-color, #888); }
         .loader .spinner {
             display: inline-block;
             width: 28px;
             height: 28px;
-            border: 3px solid #ddd;
-            border-top-color: #2481cc;
+            border: 3px solid var(--tg-theme-hint-color, #ddd);
+            border-top-color: var(--tg-theme-button-color, #2481cc);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .empty-state { text-align: center; padding: 40px 20px; color: #888; }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--tg-theme-hint-color, #888); }
         .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
         .error-details { font-size: 12px; color: #f44336; margin-top: 8px; }
         .retry-btn {
             margin-top: 12px;
             padding: 8px 20px;
             border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #f0f0f0;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
             cursor: pointer;
             font-size: 14px;
-            color: #000;
+            color: var(--tg-theme-text-color, #000);
         }
         .toast {
             position: fixed;
@@ -217,11 +215,6 @@
             font-size: 14px;
             z-index: 300;
             max-width: 90%;
-            animation: fadeInUp 0.3s ease;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .modal {
             display: none;
@@ -234,7 +227,7 @@
         }
         .modal.active { display: flex; }
         .modal-content {
-            background: #fff;
+            background: var(--tg-theme-bg-color, #fff);
             border-radius: 16px 16px 0 0;
             padding: 20px;
             width: 100%;
@@ -244,21 +237,21 @@
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
         .modal-header h2 { font-size: 17px; }
-        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #888; }
+        .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--tg-theme-hint-color, #888); }
         .modal label { display: block; font-size: 13px; font-weight: 500; margin-top: 10px; margin-bottom: 4px; }
         .modal input, .modal select {
             width: 100%;
             padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid #ddd;
-            background: #f5f5f5;
-            color: #000;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
             font-size: 15px;
         }
         .modal .submit-btn {
             margin-top: 16px;
-            background: #2481cc;
-            color: #fff;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
             border: none;
             border-radius: 8px;
             padding: 10px;
@@ -267,8 +260,6 @@
             cursor: pointer;
             width: 100%;
         }
-        .modal .submit-btn:active { opacity: 0.7; }
-        
         @media (max-width: 480px) {
             .header { padding: 8px 12px; }
             .header h1 { font-size: 15px; }
@@ -277,54 +268,6 @@
             .station-card .status-btn { font-size: 11px; padding: 6px 2px; }
             .weather-bar .weather-temp { font-size: 18px; }
             .weather-bar .weather-icon { font-size: 22px; }
-        }
-        
-        /* Стили для маркеров на карте */
-        .marker-pin {
-            width: 30px;
-            height: 30px;
-            border-radius: 50% 50% 50% 0;
-            background: #4caf50;
-            position: absolute;
-            transform: rotate(-45deg);
-            left: 50%;
-            top: 50%;
-            margin: -15px 0 0 -15px;
-            border: 2px solid #fff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-        .marker-pin::after {
-            content: '⛽';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(45deg);
-            font-size: 14px;
-        }
-        .marker-pin.green { background: #4caf50; }
-        .marker-pin.yellow { background: #ff9800; }
-        .marker-pin.red { background: #f44336; }
-        .marker-pin.gray { background: #999; }
-        
-        .marker-pulse {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(76, 175, 80, 0.3);
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        .marker-pulse.green { background: rgba(76, 175, 80, 0.3); }
-        .marker-pulse.yellow { background: rgba(255, 152, 0, 0.3); }
-        .marker-pulse.red { background: rgba(244, 67, 54, 0.3); }
-        .marker-pulse.gray { background: rgba(153, 153, 153, 0.3); }
-        
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
         }
     </style>
 </head>
@@ -386,10 +329,12 @@
 
 <script>
     // ============================================================
-    //  НАСТРОЙКИ — OpenStreetMap (без ключа)
+    //  НАСТРОЙКИ — ВАШ КЛЮЧ 2ГИС
     // ============================================================
     
+    const GIS_API_KEY = "8c80d936-5501-4f03-8bb1-b0edf20f3b4a";
     const SEARCH_RADIUS = 5000;
+    
     const tg = window.Telegram.WebApp;
     tg.expand();
     
@@ -541,7 +486,7 @@
     }
     
     // ============================================================
-    //  ЗАГРУЗКА ЗАПРАВОК (OpenStreetMap)
+    //  ЗАГРУЗКА ЗАПРАВОК (2ГИС — ИСПРАВЛЕННЫЙ ЗАПРОС)
     // ============================================================
     
     async function loadStations() {
@@ -557,15 +502,39 @@
         `;
         
         try {
-            const query = `[out:json];(node["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon});way["amenity"="fuel"](around:${SEARCH_RADIUS},${lat},${lon}););out center;`;
-            const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+            // ПРАВИЛЬНЫЙ запрос к 2ГИС с полем point
+            const url = `https://catalog.api.2gis.com/3.0/items?q=АЗС&location=${lon},${lat}&key=${GIS_API_KEY}&type=branch&fields=items.name,items.address_name,items.point&sort=distance&page_size=20`;
             
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            console.log('🔍 Запрос:', url);
+            
+            const response = await fetch(url);
+            
+            console.log('📊 Статус:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('❌ Ключ 2ГИС неактивен. Проверьте личный кабинет.');
+                }
+                if (response.status === 401) {
+                    throw new Error('❌ Неверный ключ 2ГИС.');
+                }
+                throw new Error(`HTTP ${response.status}`);
+            }
             
             const data = await response.json();
-            const elements = data.elements || [];
+            console.log('📦 Ответ 2ГИС:', data);
             
-            if (elements.length === 0) {
+            if (data.meta && data.meta.code !== 200) {
+                throw new Error(`2ГИС ошибка: ${data.meta.message || 'Неизвестная ошибка'}`);
+            }
+            
+            if (!data.result || !data.result.items) {
+                throw new Error('Неожиданный формат ответа от 2ГИС');
+            }
+            
+            const items = data.result.items || [];
+            
+            if (items.length === 0) {
                 document.getElementById('stationsList').innerHTML = `
                     <div class="empty-state">
                         <div class="icon">😔</div>
@@ -577,44 +546,54 @@
                 return;
             }
             
-            allStations = elements.map((el) => {
-                let stationLat, stationLon;
-                if (el.lat && el.lon) {
-                    stationLat = el.lat;
-                    stationLon = el.lon;
-                } else if (el.center) {
-                    stationLat = el.center.lat;
-                    stationLon = el.center.lon;
-                } else return null;
-                
-                const tags = el.tags || {};
-                const name = tags.name || 'АЗС';
-                const address = tags['addr:street'] || '';
-                const brand = tags.brand || '';
-                const dist = haversine(lat, lon, stationLat, stationLon);
-                
-                const keySuffix = `_${currentCity}`;
-                const savedStatus = localStorage.getItem(`status_${name}${keySuffix}`);
-                const savedUser = localStorage.getItem(`user_${name}${keySuffix}`);
-                const savedTime = localStorage.getItem(`time_${name}${keySuffix}`);
-                
-                const statuses = ['green', 'yellow', 'red', 'gray'];
-                const status = savedStatus || statuses[Math.floor(Math.random() * 3)];
-                
-                return {
-                    name: name,
-                    address: address,
-                    brand: brand,
-                    lat: stationLat,
-                    lon: stationLon,
-                    distance: dist,
-                    status: status,
-                    reportTime: savedTime || null,
-                    reportUser: savedUser || null,
-                    city: currentCity
-                };
-            }).filter(s => s !== null);
+            // Преобразуем данные 2ГИС в наш формат
+            allStations = items
+                .map((item) => {
+                    const name = item.name || 'АЗС';
+                    const address = item.address_name || '';
+                    // Координаты берём из поля point
+                    const point = item.point || {};
+                    const lat2 = point.lat || 0;
+                    const lon2 = point.lon || 0;
+                    const dist = haversine(lat, lon, lat2, lon2);
+                    
+                    if (lat2 === 0 && lon2 === 0) return null;
+                    
+                    const keySuffix = `_${currentCity}`;
+                    const savedStatus = localStorage.getItem(`status_${name}${keySuffix}`);
+                    const savedUser = localStorage.getItem(`user_${name}${keySuffix}`);
+                    const savedTime = localStorage.getItem(`time_${name}${keySuffix}`);
+                    
+                    const statuses = ['green', 'yellow', 'red', 'gray'];
+                    const status = savedStatus || statuses[Math.floor(Math.random() * 3)];
+                    
+                    return {
+                        name: name,
+                        address: address,
+                        brand: '',
+                        lat: lat2,
+                        lon: lon2,
+                        distance: dist,
+                        status: status,
+                        reportTime: savedTime || null,
+                        reportUser: savedUser || null,
+                        city: currentCity
+                    };
+                })
+                .filter(s => s !== null);
             
+            if (allStations.length === 0) {
+                document.getElementById('stationsList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">😔</div>
+                        <p>Нет заправок с координатами в ${currentCity}</p>
+                    </div>
+                `;
+                document.getElementById('statusLabel').textContent = 'Ничего нет';
+                return;
+            }
+            
+            // Сортировка по статусу и расстоянию
             const statusOrder = { green: 0, yellow: 1, gray: 2, red: 3 };
             allStations.sort((a, b) => {
                 const orderA = statusOrder[a.status] || 3;
@@ -628,7 +607,7 @@
             document.getElementById('statusLabel').textContent = `${allStations.length} заправок в ${currentCity}`;
             
         } catch (error) {
-            console.error('Ошибка:', error);
+            console.error('❌ Ошибка:', error);
             document.getElementById('stationsList').innerHTML = `
                 <div class="empty-state">
                     <div class="icon">⚠️</div>
@@ -642,124 +621,53 @@
     }
     
     // ============================================================
-    //  ОТОБРАЖЕНИЕ КАРТЫ (Leaflet — без кружков)
+    //  ОТОБРАЖЕНИЕ КАРТЫ (2ГИС)
     // ============================================================
     
     function renderMap(stations) {
         if (map) {
-            try { map.remove(); } catch(e) {}
+            try { map.destroy(); } catch(e) {}
             map = null;
         }
         if (!userLocation) return;
         
-        map = L.map('map').setView([userLocation.lat, userLocation.lon], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap',
-            maxZoom: 19
-        }).addTo(map);
-        
-        // Маркер пользователя — красивый и заметный
-        const userIcon = L.divIcon({
-            html: `
-                <div style="
-                    width: 36px;
-                    height: 36px;
-                    background: #e53935;
-                    border-radius: 50%;
-                    border: 3px solid #fff;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: #fff;
-                ">
-                    Я
-                </div>
-            `,
-            className: '',
-            iconSize: [36, 36],
-            iconAnchor: [18, 18]
-        });
-        L.marker([userLocation.lat, userLocation.lon], { icon: userIcon })
-            .addTo(map)
-            .bindPopup(`📍 <b>${currentCity}</b><br>Вы здесь`);
-        
-        // Маркеры заправок — красивые иконки с индикатором статуса
-        stations.forEach(station => {
+        try {
+            map = new mapgl.Map('map', {
+                center: [userLocation.lon, userLocation.lat],
+                zoom: 14,
+                key: GIS_API_KEY
+            });
+            
+            // Маркер пользователя
+            new mapgl.Marker(map, {
+                coordinates: [userLocation.lon, userLocation.lat],
+                icon: 'https://cdn.2gis.com/mapgl/v1/images/marker-2.svg',
+                color: '#e53935'
+            });
+            
+            // Маркеры заправок
             const statusColors = {
                 green: '#4caf50',
                 yellow: '#ff9800',
                 red: '#f44336',
                 gray: '#999'
             };
-            const color = statusColors[station.status] || statusColors.gray;
             
-            const icon = L.divIcon({
-                html: `
-                    <div style="position: relative; text-align: center;">
-                        <div style="
-                            width: 36px;
-                            height: 36px;
-                            background: ${color};
-                            border-radius: 50%;
-                            border: 2px solid #fff;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 16px;
-                            transition: transform 0.2s;
-                        ">
-                            ⛽
-                        </div>
-                        <div style="
-                            position: absolute;
-                            bottom: -4px;
-                            right: -4px;
-                            width: 14px;
-                            height: 14px;
-                            background: ${color};
-                            border-radius: 50%;
-                            border: 2px solid #fff;
-                            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-                        "></div>
-                        <div style="
-                            position: absolute;
-                            top: -4px;
-                            right: -4px;
-                            background: #fff;
-                            border-radius: 50%;
-                            padding: 1px 4px;
-                            font-size: 9px;
-                            font-weight: 700;
-                            color: #333;
-                            border: 1px solid #ddd;
-                            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-                        ">
-                            ${station.distance < 1 ? '<1' : Math.round(station.distance)}км
-                        </div>
-                    </div>
-                `,
-                className: 'station-marker',
-                iconSize: [36, 36],
-                iconAnchor: [18, 36]
+            stations.forEach(station => {
+                if (!station.lat || !station.lon) return;
+                const color = statusColors[station.status] || statusColors.gray;
+                try {
+                    new mapgl.Marker(map, {
+                        coordinates: [station.lon, station.lat],
+                        icon: 'https://cdn.2gis.com/mapgl/v1/images/marker-2.svg',
+                        color: color
+                    });
+                } catch(e) {}
             });
             
-            L.marker([station.lat, station.lon], { icon })
-                .addTo(map)
-                .bindPopup(`
-                    <b>${station.name}</b><br>
-                    ${station.address || ''}<br>
-                    📏 ${station.distance.toFixed(2)} км<br>
-                    📊 ${station.status === 'green' ? '✅ Есть' : station.status === 'yellow' ? '🟡 Очередь' : station.status === 'red' ? '❌ Нет' : '❓ Нет данных'}
-                `);
-        });
-        
-        setTimeout(() => {
-            if (map) map.invalidateSize();
-        }, 300);
+        } catch (error) {
+            console.error('Ошибка карты 2ГИС:', error);
+        }
     }
     
     // ============================================================
@@ -789,7 +697,6 @@
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
-                    ${station.brand ? `<div style="font-size:12px;color:#666;">🏢 ${station.brand}</div>` : ''}
                     <div class="address">📍 ${station.address || 'Адрес не указан'}</div>
                     <div class="distance">📏 ${station.distance.toFixed(2)} км</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
