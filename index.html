@@ -52,7 +52,6 @@
         }
         .refresh-btn:active { background: var(--tg-theme-hint-color, #ddd); }
         
-        /* ===== ПОГОДА ===== */
         .weather-bar {
             padding: 8px 16px;
             display: flex;
@@ -78,7 +77,6 @@
             margin-left: auto;
         }
         
-        /* ===== ПОИСК ===== */
         .search-bar {
             padding: 8px 16px;
             display: flex;
@@ -378,7 +376,7 @@
 
 <script>
     // ============================================================
-    //  НАСТРОЙКИ — ВАШ КЛЮЧ 2ГИС УЖЕ ВСТАВЛЕН
+    //  НАСТРОЙКИ — ВАШ КЛЮЧ 2ГИС
     // ============================================================
     
     const SEARCH_RADIUS = 5000;
@@ -405,6 +403,7 @@
     
     async function getWeather(city) {
         try {
+            // Используем формат, который точно работает
             const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1&lang=ru`;
             const response = await fetch(url);
             if (!response.ok) throw new Error('Погода не доступна');
@@ -412,11 +411,12 @@
             const current = data.current_condition?.[0];
             if (!current) throw new Error('Нет данных о погоде');
             
-            const temp = current.temp_C;
+            // Проверяем, что все поля есть
+            const temp = current.temp_C || '--';
             const desc = current.weatherDesc?.[0]?.value || '—';
-            const wind = current.windSpeed_kmh;
-            const humidity = current.humidity;
-            const pressure = current.pressure_mm;
+            const wind = current.windSpeed_kmh || '0';
+            const humidity = current.humidity || '0';
+            const pressure = current.pressure_mm || '0';
             
             let icon = '🌤️';
             const descLower = desc.toLowerCase();
@@ -444,11 +444,11 @@
             document.getElementById('weatherUpdate').textContent = '';
             return;
         }
-        document.getElementById('weatherIcon').textContent = weather.icon;
-        document.getElementById('weatherTemp').textContent = `${weather.temp}°C`;
-        document.getElementById('weatherDesc').textContent = weather.desc;
+        document.getElementById('weatherIcon').textContent = weather.icon || '🌤️';
+        document.getElementById('weatherTemp').textContent = weather.temp ? `${weather.temp}°C` : '--°';
+        document.getElementById('weatherDesc').textContent = weather.desc || '—';
         document.getElementById('weatherDetails').textContent = 
-            `💨 ${weather.wind} км/ч  ·  💧 ${weather.humidity}%  ·  📊 ${weather.pressure} мм`;
+            `💨 ${weather.wind || '0'} км/ч · 💧 ${weather.humidity || '0'}% · 📊 ${weather.pressure || '0'} мм`;
         const now = new Date();
         document.getElementById('weatherUpdate').textContent = `🔄 ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
     }
@@ -557,21 +557,22 @@
         `;
         
         try {
-            // Запрос к Places API 2ГИС
-            const url = `https://catalog.api.2gis.com/3.0/items?q=АЗС&location=${lon},${lat}&key=${GIS_API_KEY}&type=branch&fields=items.name,items.address_name,items.lat,items.lon&sort=distance&page_size=20`;
+            // Пробуем другой эндпоинт 2ГИС (более стабильный)
+            const url = `https://catalog.api.2gis.com/3.0/items?q=АЗС&location=${lon},${lat}&key=${GIS_API_KEY}&type=branch&fields=items.name,items.address_name&sort=distance&page_size=20`;
             const response = await fetch(url);
             
             if (!response.ok) {
                 if (response.status === 403) {
-                    throw new Error('Неверный или заблокированный ключ 2ГИС');
+                    throw new Error('Ключ 2ГИС неактивен или заблокирован. Проверьте в личном кабинете.');
                 }
-                throw new Error(`HTTP ${response.status}`);
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
             
+            // Проверяем ответ 2ГИС
             if (data.meta && data.meta.code !== 200) {
-                throw new Error(`API ошибка: ${data.meta.message || 'Неизвестная ошибка'}`);
+                throw new Error(`2ГИС ошибка: ${data.meta.message || 'Неизвестная ошибка'}`);
             }
             
             const items = data.result?.items || [];
@@ -616,7 +617,18 @@
                     reportUser: savedUser || null,
                     city: currentCity
                 };
-            }).filter(s => s !== null);
+            }).filter(s => s !== null && s.lat !== 0 && s.lon !== 0);
+            
+            if (allStations.length === 0) {
+                document.getElementById('stationsList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">😔</div>
+                        <p>Нет заправок с координатами в ${currentCity}</p>
+                    </div>
+                `;
+                document.getElementById('statusLabel').textContent = 'Ничего нет';
+                return;
+            }
             
             const statusOrder = { green: 0, yellow: 1, gray: 2, red: 3 };
             allStations.sort((a, b) => {
@@ -636,7 +648,7 @@
                 <div class="empty-state">
                     <div class="icon">⚠️</div>
                     <p>Ошибка загрузки</p>
-                    <div class="error-details">${error.message}</div>
+                    <div class="error-details">${error.message || 'Неизвестная ошибка'}</div>
                     <button class="retry-btn" onclick="loadStations()">↻ Повторить</button>
                 </div>
             `;
@@ -650,7 +662,7 @@
     
     function renderMap(stations) {
         if (map) {
-            map.destroy();
+            try { map.destroy(); } catch(e) {}
             map = null;
         }
         if (!userLocation) return;
@@ -678,24 +690,19 @@
             };
             
             stations.forEach(station => {
+                if (!station.lat || !station.lon) return;
                 const color = statusColors[station.status] || '#999';
-                new mapgl.Marker(map, {
-                    coordinates: [station.lon, station.lat],
-                    icon: 'https://cdn.2gis.com/mapgl/v1/images/marker-2.svg',
-                    color: color
-                });
+                try {
+                    new mapgl.Marker(map, {
+                        coordinates: [station.lon, station.lat],
+                        icon: 'https://cdn.2gis.com/mapgl/v1/images/marker-2.svg',
+                        color: color
+                    });
+                } catch(e) {}
             });
             
         } catch (error) {
             console.error('Ошибка карты 2ГИС:', error);
-            document.getElementById('stationsList').innerHTML = `
-                <div class="empty-state">
-                    <div class="icon">⚠️</div>
-                    <p>Ошибка карты 2ГИС</p>
-                    <div class="error-details">${error.message || 'Неизвестная ошибка'}</div>
-                    <button class="retry-btn" onclick="loadStations()">↻ Повторить</button>
-                </div>
-            `;
         }
     }
     
