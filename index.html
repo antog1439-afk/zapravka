@@ -49,11 +49,6 @@
             color: var(--tg-theme-hint-color, #888);
             margin-top: 4px;
         }
-        .location-box .radius-info {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #888);
-            margin-top: 4px;
-        }
         
         .main-btn {
             width: 100%;
@@ -73,18 +68,6 @@
         }
         .main-btn.primary {
             background: var(--tg-theme-button-color, #2481cc);
-        }
-        .main-btn.green {
-            background: #4caf50;
-        }
-        .main-btn.orange {
-            background: #ff9800;
-        }
-        .main-btn.red {
-            background: #f44336;
-        }
-        .main-btn.gray {
-            background: #999;
         }
         
         .filter-row {
@@ -132,15 +115,8 @@
         }
         .station-card .address {
             font-size: 13px;
-            color: var(--tg-theme-hint-color, #444);
-            margin: 4px 0;
-        }
-        .station-card .address .city-name {
-            color: var(--tg-theme-text-color, #000);
-            font-weight: 500;
-        }
-        .station-card .address .street {
             color: var(--tg-theme-hint-color, #666);
+            margin: 4px 0;
         }
         .station-card .distance {
             font-size: 13px;
@@ -254,7 +230,6 @@
 <div class="location-box" id="locationBox">
     <div class="city" id="cityName">📍 Определяем...</div>
     <div class="coords" id="coordsText">Широта, Долгота</div>
-    <div class="radius-info" id="radiusInfo">Радиус поиска: 100 км</div>
 </div>
 
 <!-- Главные кнопки -->
@@ -331,39 +306,6 @@
     }
     
     // ============================================================
-    //  ПОЛУЧЕНИЕ АДРЕСА ПО КООРДИНАТАМ
-    // ============================================================
-    
-    async function getAddress(lat, lon) {
-        try {
-            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=16`;
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            const address = data.address || {};
-            
-            const city = address.city || address.town || address.village || '';
-            const street = address.road || '';
-            const house = address.house_number || '';
-            
-            let fullAddress = '';
-            if (city) fullAddress += city;
-            if (street) fullAddress += (fullAddress ? ', ' : '') + street;
-            if (house) fullAddress += (fullAddress ? ', ' : '') + 'д. ' + house;
-            
-            return {
-                full: fullAddress || 'Адрес не определён',
-                city: city || 'Неизвестно',
-                street: street || '',
-                house: house || ''
-            };
-        } catch (error) {
-            console.error('Ошибка получения адреса:', error);
-            return { full: 'Адрес не определён', city: 'Неизвестно', street: '', house: '' };
-        }
-    }
-    
-    // ============================================================
     //  РАССТОЯНИЕ
     // ============================================================
     
@@ -376,7 +318,7 @@
     }
     
     // ============================================================
-    //  ПОИСК ЗАПРАВОК
+    //  ПОИСК ЗАПРАВОК (БЫСТРЫЙ — адреса из тегов OSM)
     // ============================================================
     
     async function findNearby() {
@@ -395,7 +337,7 @@
             <div class="loader">
                 <div class="spinner"></div>
                 <p style="margin-top:12px;">Ищем заправки в радиусе ${SEARCH_RADIUS_KM} км...</p>
-                <p style="font-size:12px;color:#888;margin-top:4px;">Это может занять до 10 секунд</p>
+                <p style="font-size:12px;color:#888;margin-top:4px;">Обычно это занимает 2-5 секунд</p>
             </div>
         `;
         
@@ -421,18 +363,8 @@
                 return;
             }
             
-            // Показываем прогресс
-            document.getElementById('stationsContainer').innerHTML = `
-                <div class="loader">
-                    <div class="spinner"></div>
-                    <p style="margin-top:12px;">Найдено ${elements.length} заправок. Получаю адреса...</p>
-                </div>
-            `;
-            
-            // Получаем адреса для каждой заправки
-            const stationsWithAddresses = [];
-            for (let i = 0; i < elements.length; i++) {
-                const el = elements[i];
+            // Быстрое преобразование — адрес сразу из тегов
+            allStations = elements.map((el) => {
                 let stationLat, stationLon;
                 if (el.lat && el.lon) {
                     stationLat = el.lat;
@@ -440,17 +372,25 @@
                 } else if (el.center) {
                     stationLat = el.center.lat;
                     stationLon = el.center.lon;
-                } else continue;
+                } else return null;
                 
                 const tags = el.tags || {};
                 const name = tags.name || 'АЗС';
                 const brand = tags.brand || '';
                 const dist = haversine(lat, lon, stationLat, stationLon);
                 
-                if (dist > SEARCH_RADIUS_KM) continue;
+                if (dist > SEARCH_RADIUS_KM) return null;
                 
-                // Получаем адрес
-                const address = await getAddress(stationLat, stationLon);
+                // Формируем адрес из тегов
+                const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
+                const street = tags['addr:street'] || '';
+                const house = tags['addr:housenumber'] || '';
+                
+                let address = '';
+                if (city) address += city;
+                if (street) address += (address ? ', ' : '') + street;
+                if (house) address += (address ? ', ' : '') + 'д. ' + house;
+                if (!address) address = 'Адрес не определён';
                 
                 // Проверяем статус из localStorage
                 const savedStatus = localStorage.getItem(`status_${name}`);
@@ -463,7 +403,7 @@
                     status = statuses[Math.floor(Math.random() * 4)];
                 }
                 
-                stationsWithAddresses.push({
+                return {
                     name: name,
                     brand: brand,
                     lat: stationLat,
@@ -473,20 +413,8 @@
                     status: status,
                     reportTime: savedTime || null,
                     reportUser: savedUser || null
-                });
-                
-                // Обновляем прогресс каждые 3 заправки
-                if (i % 3 === 0) {
-                    document.getElementById('stationsContainer').innerHTML = `
-                        <div class="loader">
-                            <div class="spinner"></div>
-                            <p style="margin-top:12px;">Обработано ${i + 1}/${elements.length} заправок...</p>
-                        </div>
-                    `;
-                }
-            }
-            
-            allStations = stationsWithAddresses;
+                };
+            }).filter(s => s !== null);
             
             // Сортируем по расстоянию
             allStations.sort((a, b) => a.distance - b.distance);
@@ -540,23 +468,11 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
-            // Формируем красивый адрес
-            let addressHtml = station.address.full || 'Адрес не определён';
-            if (station.address.city && station.address.city !== 'Неизвестно') {
-                addressHtml = `<span class="city-name">${station.address.city}</span>`;
-                if (station.address.street) {
-                    addressHtml += `, <span class="street">${station.address.street}</span>`;
-                }
-                if (station.address.house) {
-                    addressHtml += `, д. ${station.address.house}`;
-                }
-            }
-            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
                     ${station.brand ? `<div style="font-size:12px;color:#666;">🏢 ${station.brand}</div>` : ''}
-                    <div class="address">📍 ${addressHtml}</div>
+                    <div class="address">📍 ${station.address}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
                     ${station.reportTime ? `<div style="font-size:10px;color:#888;margin-top:4px;">⏱ Обновлено: ${station.reportTime} (от ${station.reportUser || 'аноним'})</div>` : ''}
