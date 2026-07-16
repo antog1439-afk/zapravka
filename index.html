@@ -49,6 +49,11 @@
             color: var(--tg-theme-hint-color, #888);
             margin-top: 4px;
         }
+        .location-box .radius-info {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-top: 4px;
+        }
         
         .main-btn {
             width: 100%;
@@ -81,14 +86,32 @@
         .main-btn.gray {
             background: #999;
         }
-        .main-btn.outline {
-            background: none;
-            border: 2px solid var(--tg-theme-button-color, #2481cc);
-            color: var(--tg-theme-button-color, #2481cc);
+        
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
         }
+        .filter-row button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            color: #fff;
+        }
+        .filter-row button:active { opacity: 0.7; }
+        .filter-row .f-all { background: #607d8b; }
+        .filter-row .f-green { background: #4caf50; }
+        .filter-row .f-yellow { background: #ff9800; }
+        .filter-row .f-red { background: #f44336; }
+        .filter-row .active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #333; }
         
         .stations-list {
-            margin-top: 16px;
+            margin-top: 12px;
         }
         .station-card {
             background: var(--tg-theme-secondary-bg-color, #f8f8f8);
@@ -109,8 +132,15 @@
         }
         .station-card .address {
             font-size: 13px;
-            color: var(--tg-theme-hint-color, #666);
+            color: var(--tg-theme-hint-color, #444);
             margin: 4px 0;
+        }
+        .station-card .address .city-name {
+            color: var(--tg-theme-text-color, #000);
+            font-weight: 500;
+        }
+        .station-card .address .street {
+            color: var(--tg-theme-hint-color, #666);
         }
         .station-card .distance {
             font-size: 13px;
@@ -137,11 +167,11 @@
         }
         .station-card .actions button {
             flex: 1;
-            min-width: 60px;
-            padding: 8px 12px;
+            min-width: 50px;
+            padding: 8px 10px;
             border: none;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             transition: opacity 0.2s;
@@ -196,6 +226,20 @@
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .stats-bar span { font-weight: 600; }
+        .stats-bar .s-green { color: #4caf50; }
+        .stats-bar .s-yellow { color: #ff9800; }
+        .stats-bar .s-red { color: #f44336; }
+        .stats-bar .s-gray { color: #999; }
+        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -210,16 +254,27 @@
 <div class="location-box" id="locationBox">
     <div class="city" id="cityName">📍 Определяем...</div>
     <div class="coords" id="coordsText">Широта, Долгота</div>
+    <div class="radius-info" id="radiusInfo">Радиус поиска: 100 км</div>
 </div>
 
 <!-- Главные кнопки -->
 <button class="main-btn primary" onclick="findNearby()">🔍 Найти заправки рядом</button>
 
-<!-- Кнопки быстрого доступа -->
-<div style="display:flex; gap:8px; margin-bottom:12px;">
-    <button class="main-btn green" style="flex:1; padding:12px; font-size:14px;" onclick="filterStations('green')">🟢 Есть</button>
-    <button class="main-btn orange" style="flex:1; padding:12px; font-size:14px;" onclick="filterStations('yellow')">🟡 Очередь</button>
-    <button class="main-btn red" style="flex:1; padding:12px; font-size:14px;" onclick="filterStations('red')">🔴 Нет</button>
+<!-- Фильтры -->
+<div class="filter-row">
+    <button class="f-all active" data-filter="all" onclick="setFilter('all', this)">Все</button>
+    <button class="f-green" data-filter="green" onclick="setFilter('green', this)">🟢 Есть</button>
+    <button class="f-yellow" data-filter="yellow" onclick="setFilter('yellow', this)">🟡 Очередь</button>
+    <button class="f-red" data-filter="red" onclick="setFilter('red', this)">🔴 Нет</button>
+</div>
+
+<!-- Статистика -->
+<div class="stats-bar" id="statsBar">
+    <span>Всего: <span id="totalCount">0</span></span>
+    <span class="s-green">🟢 <span id="greenCount">0</span></span>
+    <span class="s-yellow">🟡 <span id="yellowCount">0</span></span>
+    <span class="s-red">🔴 <span id="redCount">0</span></span>
+    <span class="s-gray">⚪ <span id="grayCount">0</span></span>
 </div>
 
 <!-- Список заправок -->
@@ -236,7 +291,7 @@
     //  НАСТРОЙКИ
     // ============================================================
     
-    const SEARCH_RADIUS_KM = 100; // 100 км
+    const SEARCH_RADIUS_KM = 100;
     const tg = window.Telegram.WebApp;
     tg.expand();
     
@@ -244,6 +299,7 @@
     let allStations = [];
     let currentFilter = 'all';
     let cityName = 'Неизвестно';
+    let isSearching = false;
     
     // ============================================================
     //  ГЕОЛОКАЦИЯ
@@ -275,6 +331,39 @@
     }
     
     // ============================================================
+    //  ПОЛУЧЕНИЕ АДРЕСА ПО КООРДИНАТАМ
+    // ============================================================
+    
+    async function getAddress(lat, lon) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=16`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const address = data.address || {};
+            
+            const city = address.city || address.town || address.village || '';
+            const street = address.road || '';
+            const house = address.house_number || '';
+            
+            let fullAddress = '';
+            if (city) fullAddress += city;
+            if (street) fullAddress += (fullAddress ? ', ' : '') + street;
+            if (house) fullAddress += (fullAddress ? ', ' : '') + 'д. ' + house;
+            
+            return {
+                full: fullAddress || 'Адрес не определён',
+                city: city || 'Неизвестно',
+                street: street || '',
+                house: house || ''
+            };
+        } catch (error) {
+            console.error('Ошибка получения адреса:', error);
+            return { full: 'Адрес не определён', city: 'Неизвестно', street: '', house: '' };
+        }
+    }
+    
+    // ============================================================
     //  РАССТОЯНИЕ
     // ============================================================
     
@@ -287,10 +376,13 @@
     }
     
     // ============================================================
-    //  ПОИСК ЗАПРАВОК (OpenStreetMap — БЕЗ КЛЮЧА)
+    //  ПОИСК ЗАПРАВОК
     // ============================================================
     
     async function findNearby() {
+        if (isSearching) return;
+        isSearching = true;
+        
         if (!userLocation) {
             userLocation = await getUserLocation();
             cityName = await getCityName(userLocation.lat, userLocation.lon);
@@ -303,11 +395,11 @@
             <div class="loader">
                 <div class="spinner"></div>
                 <p style="margin-top:12px;">Ищем заправки в радиусе ${SEARCH_RADIUS_KM} км...</p>
+                <p style="font-size:12px;color:#888;margin-top:4px;">Это может занять до 10 секунд</p>
             </div>
         `;
         
         try {
-            // Переводим км в метры для OSM
             const radiusMeters = SEARCH_RADIUS_KM * 1000;
             const query = `[out:json];(node["amenity"="fuel"](around:${radiusMeters},${lat},${lon});way["amenity"="fuel"](around:${radiusMeters},${lat},${lon}););out center;`;
             const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
@@ -325,11 +417,22 @@
                         <p style="font-size:12px;color:#888;margin-top:4px;">Попробуйте расширить радиус</p>
                     </div>
                 `;
+                isSearching = false;
                 return;
             }
             
-            // Преобразуем данные
-            allStations = elements.map((el) => {
+            // Показываем прогресс
+            document.getElementById('stationsContainer').innerHTML = `
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <p style="margin-top:12px;">Найдено ${elements.length} заправок. Получаю адреса...</p>
+                </div>
+            `;
+            
+            // Получаем адреса для каждой заправки
+            const stationsWithAddresses = [];
+            for (let i = 0; i < elements.length; i++) {
+                const el = elements[i];
                 let stationLat, stationLon;
                 if (el.lat && el.lon) {
                     stationLat = el.lat;
@@ -337,43 +440,59 @@
                 } else if (el.center) {
                     stationLat = el.center.lat;
                     stationLon = el.center.lon;
-                } else return null;
+                } else continue;
                 
                 const tags = el.tags || {};
                 const name = tags.name || 'АЗС';
-                const address = tags['addr:street'] || '';
                 const brand = tags.brand || '';
                 const dist = haversine(lat, lon, stationLat, stationLon);
+                
+                if (dist > SEARCH_RADIUS_KM) continue;
+                
+                // Получаем адрес
+                const address = await getAddress(stationLat, stationLon);
                 
                 // Проверяем статус из localStorage
                 const savedStatus = localStorage.getItem(`status_${name}`);
                 const savedTime = localStorage.getItem(`time_${name}`);
                 const savedUser = localStorage.getItem(`user_${name}`);
                 
-                // Если есть сохранённый статус, используем его, иначе случайный
                 let status = savedStatus;
                 if (!status) {
-                    const statuses = ['green', 'yellow', 'red'];
-                    status = statuses[Math.floor(Math.random() * 3)];
+                    const statuses = ['green', 'yellow', 'red', 'gray'];
+                    status = statuses[Math.floor(Math.random() * 4)];
                 }
                 
-                return {
+                stationsWithAddresses.push({
                     name: name,
-                    address: address,
                     brand: brand,
                     lat: stationLat,
                     lon: stationLon,
                     distance: dist,
+                    address: address,
                     status: status,
                     reportTime: savedTime || null,
                     reportUser: savedUser || null
-                };
-            }).filter(s => s !== null && s.distance <= SEARCH_RADIUS_KM);
+                });
+                
+                // Обновляем прогресс каждые 3 заправки
+                if (i % 3 === 0) {
+                    document.getElementById('stationsContainer').innerHTML = `
+                        <div class="loader">
+                            <div class="spinner"></div>
+                            <p style="margin-top:12px;">Обработано ${i + 1}/${elements.length} заправок...</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            allStations = stationsWithAddresses;
             
             // Сортируем по расстоянию
             allStations.sort((a, b) => a.distance - b.distance);
             
             renderStations(allStations);
+            updateStats(allStations);
             
         } catch (error) {
             document.getElementById('stationsContainer').innerHTML = `
@@ -385,6 +504,8 @@
                 </div>
             `;
         }
+        
+        isSearching = false;
     }
     
     // ============================================================
@@ -419,11 +540,23 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
+            // Формируем красивый адрес
+            let addressHtml = station.address.full || 'Адрес не определён';
+            if (station.address.city && station.address.city !== 'Неизвестно') {
+                addressHtml = `<span class="city-name">${station.address.city}</span>`;
+                if (station.address.street) {
+                    addressHtml += `, <span class="street">${station.address.street}</span>`;
+                }
+                if (station.address.house) {
+                    addressHtml += `, д. ${station.address.house}`;
+                }
+            }
+            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
                     ${station.brand ? `<div style="font-size:12px;color:#666;">🏢 ${station.brand}</div>` : ''}
-                    <div class="address">📍 ${station.address || 'Адрес не указан'}</div>
+                    <div class="address">📍 ${addressHtml}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
                     ${station.reportTime ? `<div style="font-size:10px;color:#888;margin-top:4px;">⏱ Обновлено: ${station.reportTime} (от ${station.reportUser || 'аноним'})</div>` : ''}
@@ -438,14 +571,35 @@
         });
         
         document.getElementById('stationsContainer').innerHTML = html;
+        updateStats(stations);
+    }
+    
+    // ============================================================
+    //  СТАТИСТИКА
+    // ============================================================
+    
+    function updateStats(stations) {
+        const counts = { green: 0, yellow: 0, red: 0, gray: 0 };
+        stations.forEach(s => {
+            if (counts[s.status] !== undefined) counts[s.status]++;
+        });
+        
+        const total = stations.length;
+        document.getElementById('totalCount').textContent = total;
+        document.getElementById('greenCount').textContent = counts.green;
+        document.getElementById('yellowCount').textContent = counts.yellow;
+        document.getElementById('redCount').textContent = counts.red;
+        document.getElementById('grayCount').textContent = counts.gray;
     }
     
     // ============================================================
     //  ФИЛЬТРЫ
     // ============================================================
     
-    function filterStations(status) {
-        currentFilter = currentFilter === status ? 'all' : status;
+    function setFilter(filter, btn) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-row button').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
         renderStations(allStations);
     }
     
@@ -483,23 +637,24 @@
         } catch (e) {}
         
         renderStations(allStations);
-        showToast(`✅ Статус обновлён: ${status === 'green' ? 'Есть' : status === 'yellow' ? 'Очередь' : 'Нет'}`);
+        updateStats(allStations);
+        
+        const statusNames = { green: 'Есть', yellow: 'Очередь', red: 'Нет', gray: 'Нет данных' };
+        showToast(`✅ Статус обновлён: ${statusNames[status] || status}`);
     }
     
     // ============================================================
-    //  МАРШРУТ (открывает Яндекс.Карты или Google Maps)
+    //  МАРШРУТ
     // ============================================================
     
     function openRoute(lat, lon, name) {
         const url = `https://yandex.ru/maps/?rtext=~${lat},${lon}&rtt=auto`;
-        // Альтернатива: Google Maps
-        // const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
         window.open(url, '_blank');
         showToast(`🗺️ Открываю маршрут до ${name}`);
     }
     
     // ============================================================
-    //  TOAST-УВЕДОМЛЕНИЯ
+    //  TOAST
     // ============================================================
     
     function showToast(message) {
