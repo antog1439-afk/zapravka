@@ -175,82 +175,6 @@
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
         
-        /* ===== ТОПЛИВО ===== */
-        .station-card .fuels {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin: 6px 0;
-        }
-        .station-card .fuel-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: var(--tg-theme-bg-color, #fff);
-            border-radius: 8px;
-            padding: 3px 10px;
-            font-size: 12px;
-            font-weight: 500;
-            border: 1px solid var(--tg-theme-hint-color, #ddd);
-        }
-        .fuel-tag .fuel-name {
-            font-weight: 600;
-        }
-        .fuel-tag .fuel-price {
-            color: var(--tg-theme-text-color, #000);
-        }
-        .fuel-tag .fuel-available {
-            color: #4caf50;
-        }
-        .fuel-tag .fuel-unavailable {
-            color: #f44336;
-        }
-        .fuel-tag .fuel-limited {
-            color: #ff9800;
-        }
-        
-        /* ===== ДОСТОВЕРНОСТЬ ===== */
-        .station-card .trust-badge {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 6px 0;
-            font-size: 11px;
-            color: var(--tg-theme-hint-color, #888);
-            flex-wrap: wrap;
-        }
-        .station-card .trust-badge .verified {
-            color: #4caf50;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .unverified {
-            color: #ff9800;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .time {
-            color: var(--tg-theme-hint-color, #999);
-        }
-        .station-card .trust-badge .count {
-            background: var(--tg-theme-secondary-bg-color, #e8e8e8);
-            padding: 1px 8px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .new {
-            background: #4caf50;
-            color: #fff;
-            padding: 1px 8px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 10px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-        
         .station-card .actions {
             display: flex;
             gap: 8px;
@@ -482,35 +406,6 @@
     }
     
     // ============================================================
-    //  ГЕНЕРАЦИЯ ДАННЫХ О ТОПЛИВЕ
-    // ============================================================
-    
-    function generateFuelData() {
-        // Генерируем реалистичные цены (в диапазоне 50-85 руб)
-        const basePrice = 50 + Math.random() * 35;
-        const fuelTypes = [
-            { name: 'АИ-92', price: basePrice + Math.random() * 3 - 1.5 },
-            { name: 'АИ-95', price: basePrice + 3 + Math.random() * 3 - 1.5 },
-            { name: 'ДТ', price: basePrice + 2 + Math.random() * 3 - 1.5 }
-        ];
-        
-        // Наличие: 60% - есть, 25% - ограничено, 15% - нет
-        return fuelTypes.map(f => {
-            const rand = Math.random();
-            let status;
-            if (rand < 0.60) status = 'available';
-            else if (rand < 0.85) status = 'limited';
-            else status = 'unavailable';
-            
-            return {
-                name: f.name,
-                price: Math.round(f.price * 10) / 10,
-                status: status
-            };
-        });
-    }
-    
-    // ============================================================
     //  ПОИСК ЗАПРАВОК
     // ============================================================
     
@@ -588,10 +483,12 @@
                     address = await getAddressByCoords(stationLat, stationLon);
                 }
                 
+                // Проверяем статус из localStorage
                 const savedStatus = localStorage.getItem(`status_${name}`);
                 const savedTime = localStorage.getItem(`time_${name}`);
                 const savedUser = localStorage.getItem(`user_${name}`);
                 
+                // Голоса пользователей
                 const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
                 const voteCount = Object.keys(votes).length;
                 
@@ -603,9 +500,6 @@
                 
                 const isVerified = voteCount >= 2;
                 const isNew = savedTime && (Date.now() - new Date().setHours(0,0,0,0)) < 3600000;
-                
-                // Генерируем данные о топливе
-                const fuels = generateFuelData();
                 
                 stationsWithAddresses.push({
                     name: name,
@@ -619,8 +513,7 @@
                     reportUser: savedUser || null,
                     voteCount: voteCount,
                     isVerified: isVerified,
-                    isNew: isNew,
-                    fuels: fuels
+                    isNew: isNew
                 });
             }
             
@@ -671,17 +564,12 @@
             gray: { text: '❓ Нет данных', class: 'gray' }
         };
         
-        const fuelStatusMap = {
-            available: { text: '✅', class: 'fuel-available' },
-            limited: { text: '🟡', class: 'fuel-limited' },
-            unavailable: { text: '❌', class: 'fuel-unavailable' }
-        };
-        
         let html = '';
         filtered.forEach((station) => {
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
+            // Бейдж достоверности
             let trustHtml = '';
             if (station.isVerified) {
                 trustHtml = `<span class="verified">✅ Проверено (${station.voteCount} чел.)</span>`;
@@ -695,18 +583,6 @@
                 trustHtml += ` <span class="new">НОВОЕ</span>`;
             }
             
-            // Формируем теги топлива
-            const fuelHtml = station.fuels.map(f => {
-                const fuelStatus = fuelStatusMap[f.status] || fuelStatusMap.unavailable;
-                return `
-                    <span class="fuel-tag">
-                        <span class="fuel-name">${f.name}</span>
-                        <span class="fuel-price">${f.price} ₽</span>
-                        <span class="${fuelStatus.class}">${fuelStatus.text}</span>
-                    </span>
-                `;
-            }).join('');
-            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
@@ -714,8 +590,7 @@
                     <div class="address">📍 ${station.address || 'Адрес не определён'}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
-                    <div class="fuels">${fuelHtml}</div>
-                    <div class="trust-badge">
+                    <div class="trust-badge" style="display:flex;align-items:center;gap:12px;margin:6px 0;font-size:11px;color:var(--tg-theme-hint-color,#888);flex-wrap:wrap;">
                         ${trustHtml}
                         ${station.reportTime ? `<span class="time">⏱ ${station.reportTime}</span>` : ''}
                         ${station.reportUser ? `<span>👤 ${station.reportUser}</span>` : ''}
@@ -776,6 +651,7 @@
         localStorage.setItem(`time_${name}`, timeStr);
         localStorage.setItem(`user_${name}`, user);
         
+        // Сохраняем голос
         const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
         votes[user] = { status: status, time: timeStr };
         localStorage.setItem(`votes_${name}`, JSON.stringify(votes));
