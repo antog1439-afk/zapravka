@@ -143,6 +143,7 @@
             margin-bottom: 10px;
             border-left: 4px solid #999;
             border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+            transition: all 0.2s;
         }
         .station-card.status-green { border-left-color: #4caf50; }
         .station-card.status-yellow { border-left-color: #ff9800; }
@@ -174,6 +175,48 @@
         .status-badge.yellow { background: #ff9800; color: #fff; }
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
+        
+        /* ДОСТОВЕРНОСТЬ */
+        .station-card .trust-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 6px 0;
+            font-size: 11px;
+            color: var(--tg-theme-hint-color, #888);
+            flex-wrap: wrap;
+        }
+        .station-card .trust-badge .verified {
+            color: #4caf50;
+            font-weight: 600;
+        }
+        .station-card .trust-badge .unverified {
+            color: #ff9800;
+            font-weight: 600;
+        }
+        .station-card .trust-badge .time {
+            color: var(--tg-theme-hint-color, #999);
+        }
+        .station-card .trust-badge .count {
+            background: var(--tg-theme-secondary-bg-color, #e8e8e8);
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .station-card .trust-badge .new {
+            background: #4caf50;
+            color: #fff;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 10px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
         
         .station-card .actions {
             display: flex;
@@ -270,7 +313,7 @@
 <div class="location-box" id="locationBox">
     <div class="city" id="cityName">📍 Определяем...</div>
     <div class="coords" id="coordsText">Широта, Долгота</div>
-    <div class="radius-info" id="radiusInfo">📏 Радиус поиска: <span id="currentRadiusDisplay">100</span> км</div>
+    <div class="radius-info" id="radiusInfo">📏 Радиус: <span id="currentRadiusDisplay">100</span> км</div>
 </div>
 
 <!-- Выбор радиуса -->
@@ -329,6 +372,9 @@
     let cityName = 'Неизвестно';
     let isSearching = false;
     
+    // Хранилище для подсчёта голосов
+    let voteCounts = {};
+    
     // ============================================================
     //  ВЫБОР РАДИУСА
     // ============================================================
@@ -338,7 +384,7 @@
         document.querySelectorAll('.radius-selector button').forEach(b => b.classList.remove('active'));
         if (btn) btn.classList.add('active');
         document.getElementById('currentRadiusDisplay').textContent = radius;
-        showToast(`📏 Радиус установлен: ${radius} км`);
+        showToast(`📏 Радиус: ${radius} км`);
     }
     
     // ============================================================
@@ -371,7 +417,7 @@
     }
     
     // ============================================================
-    //  ПОЛУЧЕНИЕ АДРЕСА ПО КООРДИНАТАМ
+    //  ПОЛУЧЕНИЕ АДРЕСА
     // ============================================================
     
     async function getAddressByCoords(lat, lon) {
@@ -451,7 +497,6 @@
                 return;
             }
             
-            // Собираем заправки с адресами
             const stationsWithAddresses = [];
             
             for (const el of elements) {
@@ -471,7 +516,6 @@
                 
                 if (dist > SEARCH_RADIUS_KM) continue;
                 
-                // Пробуем получить адрес из тегов
                 const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
                 const street = tags['addr:street'] || '';
                 const house = tags['addr:housenumber'] || '';
@@ -481,21 +525,32 @@
                 if (street) address += (address ? ', ' : '') + street;
                 if (house) address += (address ? ', ' : '') + 'д. ' + house;
                 
-                // Если адреса нет в тегах — получаем по координатам
                 if (!address) {
                     address = await getAddressByCoords(stationLat, stationLon);
                 }
                 
-                // Проверяем статус из localStorage
                 const savedStatus = localStorage.getItem(`status_${name}`);
                 const savedTime = localStorage.getItem(`time_${name}`);
                 const savedUser = localStorage.getItem(`user_${name}`);
+                
+                // Получаем количество голосов
+                const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
+                const voteCount = Object.keys(votes).length;
+                
+                // Загружаем голоса в общее хранилище
+                if (!voteCounts[name]) {
+                    voteCounts[name] = votes;
+                }
                 
                 let status = savedStatus;
                 if (!status) {
                     const statuses = ['green', 'yellow', 'red', 'gray'];
                     status = statuses[Math.floor(Math.random() * 4)];
                 }
+                
+                // Вычисляем достоверность
+                const isVerified = voteCount >= 2;
+                const isNew = savedTime && (Date.now() - new Date().setHours(0,0,0,0)) < 3600000; // последний час
                 
                 stationsWithAddresses.push({
                     name: name,
@@ -506,13 +561,14 @@
                     address: address,
                     status: status,
                     reportTime: savedTime || null,
-                    reportUser: savedUser || null
+                    reportUser: savedUser || null,
+                    voteCount: voteCount,
+                    isVerified: isVerified,
+                    isNew: isNew
                 });
             }
             
             allStations = stationsWithAddresses;
-            
-            // Сортируем по расстоянию
             allStations.sort((a, b) => a.distance - b.distance);
             
             renderStations(allStations);
@@ -564,6 +620,20 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
+            // Формируем бейдж достоверности
+            let trustHtml = '';
+            if (station.isVerified) {
+                trustHtml = `<span class="verified">✅ Проверено (${station.voteCount} чел.)</span>`;
+            } else if (station.voteCount > 0) {
+                trustHtml = `<span class="unverified">🔄 ${station.voteCount} чел. подтвердили</span>`;
+            } else {
+                trustHtml = `<span class="unverified">❓ Нет подтверждений</span>`;
+            }
+            
+            if (station.isNew && station.reportTime) {
+                trustHtml += ` <span class="new">НОВОЕ</span>`;
+            }
+            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
@@ -571,7 +641,11 @@
                     <div class="address">📍 ${station.address || 'Адрес не определён'}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
-                    ${station.reportTime ? `<div style="font-size:10px;color:#888;margin-top:4px;">⏱ Обновлено: ${station.reportTime} (от ${station.reportUser || 'аноним'})</div>` : ''}
+                    <div class="trust-badge">
+                        ${trustHtml}
+                        ${station.reportTime ? `<span class="time">⏱ ${station.reportTime}</span>` : ''}
+                        ${station.reportUser ? `<span>👤 ${station.reportUser}</span>` : ''}
+                    </div>
                     <div class="actions">
                         <button class="btn-route" onclick="openRoute(${station.lat}, ${station.lon}, '${station.name.replace(/'/g, "\\'")}')">🗺️ Маршрут</button>
                         <button class="btn-green" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'green')">✅</button>
@@ -616,32 +690,43 @@
     }
     
     // ============================================================
-    //  УСТАНОВКА СТАТУСА
+    //  УСТАНОВКА СТАТУСА (с голосованием)
     // ============================================================
     
     function setStatus(name, status) {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        const user = tg.initDataUnsafe?.user?.username || 'аноним';
         
+        // Сохраняем статус
         localStorage.setItem(`status_${name}`, status);
         localStorage.setItem(`time_${name}`, timeStr);
-        localStorage.setItem(`user_${name}`, 'я');
+        localStorage.setItem(`user_${name}`, user);
+        
+        // Сохраняем голос
+        const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
+        votes[user] = { status: status, time: timeStr };
+        localStorage.setItem(`votes_${name}`, JSON.stringify(votes));
+        voteCounts[name] = votes;
         
         const station = allStations.find(s => s.name === name);
         if (station) {
             station.status = status;
             station.reportTime = timeStr;
-            station.reportUser = 'я';
+            station.reportUser = user;
+            station.voteCount = Object.keys(votes).length;
+            station.isVerified = station.voteCount >= 2;
+            station.isNew = true;
         }
         
-        // Отправляем в бота
         const data = {
             action: 'status',
             station: name,
             lat: station ? station.lat : 0,
             lon: station ? station.lon : 0,
             status: status,
-            city: cityName
+            city: cityName,
+            user: user
         };
         
         try {
@@ -662,7 +747,7 @@
     function openRoute(lat, lon, name) {
         const url = `https://yandex.ru/maps/?rtext=~${lat},${lon}&rtt=auto`;
         window.open(url, '_blank');
-        showToast(`🗺️ Открываю маршрут до ${name}`);
+        showToast(`🗺️ Маршрут до ${name}`);
     }
     
     // ============================================================
