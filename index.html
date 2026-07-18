@@ -20,40 +20,39 @@
         
         .header {
             text-align: center;
-            padding: 20px 0 10px 0;
+            padding: 16px 0 8px 0;
         }
         .header h1 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
         }
         .header p {
-            font-size: 14px;
+            font-size: 13px;
             color: var(--tg-theme-hint-color, #888);
-            margin-top: 4px;
+            margin-top: 2px;
         }
         
         .location-box {
             background: var(--tg-theme-secondary-bg-color, #f5f5f5);
             border-radius: 12px;
-            padding: 16px;
-            margin: 16px 0;
+            padding: 14px;
+            margin: 12px 0;
             text-align: center;
             border: 1px solid var(--tg-theme-hint-color, #ddd);
         }
         .location-box .city {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 600;
         }
         .location-box .coords {
+            font-size: 11px;
+            color: var(--tg-theme-hint-color, #888);
+            margin-top: 2px;
+        }
+        .location-box .radius-info {
             font-size: 12px;
             color: var(--tg-theme-hint-color, #888);
             margin-top: 4px;
-        }
-        .location-box .radius-info {
-            font-size: 13px;
-            color: var(--tg-theme-hint-color, #888);
-            margin-top: 6px;
-            font-weight: 500;
         }
         .location-box .radius-info span {
             color: var(--tg-theme-button-color, #2481cc);
@@ -62,28 +61,22 @@
         
         .main-btn {
             width: 100%;
-            padding: 16px;
-            font-size: 18px;
+            padding: 14px;
+            font-size: 17px;
             font-weight: 600;
             border: none;
             border-radius: 12px;
             cursor: pointer;
-            transition: opacity 0.2s, transform 0.1s;
             margin-bottom: 12px;
             color: #fff;
-        }
-        .main-btn:active {
-            opacity: 0.7;
-            transform: scale(0.98);
-        }
-        .main-btn.primary {
             background: var(--tg-theme-button-color, #2481cc);
+            transition: opacity 0.2s;
         }
+        .main-btn:active { opacity: 0.7; }
         
         .radius-selector {
             display: flex;
             gap: 8px;
-            flex-wrap: wrap;
             margin-bottom: 12px;
             justify-content: center;
         }
@@ -93,17 +86,14 @@
             border-radius: 10px;
             background: var(--tg-theme-bg-color, #fff);
             color: var(--tg-theme-text-color, #000);
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             flex: 1;
-            min-width: 70px;
             max-width: 100px;
         }
-        .radius-selector button:active {
-            transform: scale(0.95);
-        }
+        .radius-selector button:active { transform: scale(0.95); }
         .radius-selector button.active {
             border-color: var(--tg-theme-button-color, #2481cc);
             background: var(--tg-theme-button-color, #2481cc);
@@ -112,19 +102,19 @@
         
         .filter-row {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             margin-bottom: 12px;
         }
         .filter-row button {
             flex: 1;
-            padding: 10px;
+            padding: 8px;
             border: none;
-            border-radius: 10px;
-            font-size: 13px;
+            border-radius: 8px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
             color: #fff;
+            transition: opacity 0.2s;
         }
         .filter-row button:active { opacity: 0.7; }
         .filter-row .f-all { background: #607d8b; }
@@ -133,17 +123,28 @@
         .filter-row .f-red { background: #f44336; }
         .filter-row .active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #333; }
         
-        .stations-list {
-            margin-top: 12px;
+        .stats-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding: 6px 0;
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #888);
+            flex-wrap: wrap;
         }
+        .stats-bar span { font-weight: 600; }
+        .stats-bar .s-green { color: #4caf50; }
+        .stats-bar .s-yellow { color: #ff9800; }
+        .stats-bar .s-red { color: #f44336; }
+        .stats-bar .s-gray { color: #999; }
+        
         .station-card {
             background: var(--tg-theme-secondary-bg-color, #f8f8f8);
-            border-radius: 12px;
-            padding: 14px 16px;
+            border-radius: 10px;
+            padding: 12px 14px;
             margin-bottom: 10px;
             border-left: 4px solid #999;
             border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
-            transition: all 0.2s;
         }
         .station-card.status-green { border-left-color: #4caf50; }
         .station-card.status-yellow { border-left-color: #ff9800; }
@@ -151,16 +152,16 @@
         .station-card.status-gray { border-left-color: #999; }
         
         .station-card .name {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
         }
         .station-card .address {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--tg-theme-hint-color, #666);
-            margin: 4px 0;
+            margin: 3px 0;
         }
         .station-card .distance {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--tg-theme-hint-color, #888);
         }
         .station-card .status-badge {
@@ -176,19 +177,53 @@
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
         
+        .station-card .info-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+            margin: 4px 0;
+            font-size: 11px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .station-card .info-row .item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        
+        .station-card .fuels {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 6px 0;
+        }
+        .station-card .fuel-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: var(--tg-theme-bg-color, #fff);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+        }
+        .fuel-tag .fuel-available { color: #4caf50; font-weight: 600; }
+        .fuel-tag .fuel-unavailable { color: #f44336; font-weight: 600; }
+        
         .station-card .actions {
             display: flex;
-            gap: 8px;
-            margin-top: 10px;
+            gap: 6px;
+            margin-top: 8px;
             flex-wrap: wrap;
         }
         .station-card .actions button {
             flex: 1;
-            min-width: 50px;
-            padding: 8px 10px;
+            min-width: 45px;
+            padding: 6px 8px;
             border: none;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             transition: opacity 0.2s;
@@ -207,8 +242,8 @@
         }
         .loader .spinner {
             display: inline-block;
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border: 3px solid var(--tg-theme-hint-color, #ddd);
             border-top-color: var(--tg-theme-button-color, #2481cc);
             border-radius: 50%;
@@ -221,7 +256,7 @@
             padding: 40px 20px;
             color: var(--tg-theme-hint-color, #888);
         }
-        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
         
         .toast {
             position: fixed;
@@ -230,9 +265,9 @@
             transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             color: #fff;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 13px;
             z-index: 300;
             max-width: 90%;
             text-align: center;
@@ -242,20 +277,6 @@
             from { opacity: 0; transform: translateX(-50%) translateY(20px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
-        
-        .stats-bar {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            padding: 8px 0;
-            font-size: 13px;
-            color: var(--tg-theme-hint-color, #888);
-        }
-        .stats-bar span { font-weight: 600; }
-        .stats-bar .s-green { color: #4caf50; }
-        .stats-bar .s-yellow { color: #ff9800; }
-        .stats-bar .s-red { color: #f44336; }
-        .stats-bar .s-gray { color: #999; }
         
         .hidden { display: none !important; }
     </style>
@@ -402,6 +423,18 @@
     }
     
     // ============================================================
+    //  ГЕНЕРАЦИЯ ДАННЫХ О ТОПЛИВЕ
+    // ============================================================
+    
+    function generateFuelData() {
+        return [
+            { name: 'АИ-92', available: Math.random() > 0.25 },
+            { name: 'АИ-95', available: Math.random() > 0.2 },
+            { name: 'ДТ', available: Math.random() > 0.3 }
+        ];
+    }
+    
+    // ============================================================
     //  ПОИСК ЗАПРАВОК
     // ============================================================
     
@@ -489,6 +522,8 @@
                     status = statuses[Math.floor(Math.random() * 4)];
                 }
                 
+                const fuels = generateFuelData();
+                
                 stationsWithAddresses.push({
                     name: name,
                     brand: brand,
@@ -498,7 +533,8 @@
                     address: address,
                     status: status,
                     reportTime: savedTime || null,
-                    reportUser: savedUser || null
+                    reportUser: savedUser || null,
+                    fuels: fuels
                 });
             }
             
@@ -549,10 +585,26 @@
             gray: { text: '❓ Нет данных', class: 'gray' }
         };
         
+        const fuelStatusMap = {
+            true: { text: '✅', class: 'fuel-available' },
+            false: { text: '❌', class: 'fuel-unavailable' }
+        };
+        
         let html = '';
         filtered.forEach((station) => {
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
+            
+            // Топливо (только наличие, без цен)
+            const fuelHtml = station.fuels.map(f => {
+                const status = fuelStatusMap[f.available] || fuelStatusMap.false;
+                return `
+                    <span class="fuel-tag">
+                        ${f.name}
+                        <span class="${status.class}">${status.text}</span>
+                    </span>
+                `;
+            }).join('');
             
             html += `
                 <div class="station-card status-${station.status}">
@@ -561,7 +613,16 @@
                     <div class="address">📍 ${station.address || 'Адрес не определён'}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
-                    ${station.reportTime ? `<div style="font-size:10px;color:#888;margin-top:4px;">⏱ Обновлено: ${station.reportTime}${station.reportUser ? ` (от ${station.reportUser})` : ''}</div>` : ''}
+                    
+                    ${station.reportTime || station.reportUser ? `
+                    <div class="info-row">
+                        ${station.reportTime ? `<span class="item">⏱ ${station.reportTime}</span>` : ''}
+                        ${station.reportUser ? `<span class="item">👤 ${station.reportUser}</span>` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    <div class="fuels">${fuelHtml}</div>
+                    
                     <div class="actions">
                         <button class="btn-route" onclick="openRoute(${station.lat}, ${station.lon}, '${station.name.replace(/'/g, "\\'")}')">🗺️ Маршрут</button>
                         <button class="btn-green" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'green')">✅</button>
