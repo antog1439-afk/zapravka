@@ -258,6 +258,22 @@
         }
         .empty-state .icon { font-size: 40px; margin-bottom: 10px; }
         
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #888);
+        }
+        .error-state .icon { font-size: 40px; margin-bottom: 10px; }
+        .error-state .error-details {
+            font-size: 12px;
+            color: #f44336;
+            margin-top: 6px;
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #f44336;
+        }
+        
         .toast {
             position: fixed;
             bottom: 20px;
@@ -345,6 +361,8 @@
     let currentFilter = 'all';
     let cityName = 'Неизвестно';
     let isSearching = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
     
     // ============================================================
     //  ВЫБОР РАДИУСА
@@ -435,12 +453,39 @@
     }
     
     // ============================================================
+    //  ЗАПРОС С ПОВТОРОМ
+    // ============================================================
+    
+    async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+        let lastError;
+        for (let i = 0; i <= maxRetries; i++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                lastError = error;
+                if (i < maxRetries) {
+                    await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+                }
+            }
+        }
+        throw lastError;
+    }
+    
+    // ============================================================
     //  ПОИСК ЗАПРАВОК
     // ============================================================
     
     async function findNearby() {
         if (isSearching) return;
         isSearching = true;
+        retryCount = 0;
         
         if (!userLocation) {
             userLocation = await getUserLocation();
@@ -461,9 +506,13 @@
         try {
             const radiusMeters = SEARCH_RADIUS_KM * 1000;
             const query = `[out:json];(node["amenity"="fuel"](around:${radiusMeters},${lat},${lon});way["amenity"="fuel"](around:${radiusMeters},${lat},${lon}););out center;`;
-            const response = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
             
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const response = await fetchWithRetry(url, {}, MAX_RETRIES);
+            
+            if (!response.ok) {
+                throw new Error(`Сервер временно недоступен (${response.status}). Попробуйте позже.`);
+            }
             
             const data = await response.json();
             const elements = data.elements || [];
@@ -509,7 +558,11 @@
                 if (house) address += (address ? ', ' : '') + 'д. ' + house;
                 
                 if (!address) {
-                    address = await getAddressByCoords(stationLat, stationLon);
+                    try {
+                        address = await getAddressByCoords(stationLat, stationLon);
+                    } catch {
+                        address = 'Адрес не определён';
+                    }
                 }
                 
                 const savedStatus = localStorage.getItem(`status_${name}`);
@@ -545,12 +598,24 @@
             updateStats(allStations);
             
         } catch (error) {
+            console.error('Ошибка:', error);
+            
+            let errorMessage = 'Не удалось загрузить данные';
+            if (error.name === 'AbortError') {
+                errorMessage = 'Сервер не отвечает. Проверьте интернет и попробуйте снова.';
+            } else if (error.message && error.message.includes('HTTP 500')) {
+                errorMessage = 'Сервер перегружен. Попробуйте через минуту.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
             document.getElementById('stationsContainer').innerHTML = `
-                <div class="empty-state">
+                <div class="error-state">
                     <div class="icon">⚠️</div>
                     <p>Ошибка загрузки</p>
-                    <p style="font-size:12px;color:#f44336;margin-top:4px;">${error.message}</p>
-                    <button onclick="findNearby()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid #ddd;background:#f0f0f0;cursor:pointer;font-size:14px;">↻ Повторить</button>
+                    <div class="error-details">${errorMessage}</div>
+                    <button onclick="findNearby()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid var(--tg-theme-hint-color,#ddd);background:var(--tg-theme-secondary-bg-color,#f0f0f0);cursor:pointer;font-size:14px;color:var(--tg-theme-text-color,#000);">↻ Повторить</button>
+                    <p style="font-size:11px;color:#888;margin-top:8px;">Сервер может быть перегружен. Попробуйте позже.</p>
                 </div>
             `;
         }
@@ -595,7 +660,6 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
-            // Топливо (только наличие, без цен)
             const fuelHtml = station.fuels.map(f => {
                 const status = fuelStatusMap[f.available] || fuelStatusMap.false;
                 return `
