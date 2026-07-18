@@ -88,18 +88,18 @@
             justify-content: center;
         }
         .radius-selector button {
-            padding: 8px 14px;
+            padding: 8px 20px;
             border: 2px solid var(--tg-theme-hint-color, #ddd);
             border-radius: 10px;
             background: var(--tg-theme-bg-color, #fff);
             color: var(--tg-theme-text-color, #000);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             flex: 1;
-            min-width: 60px;
-            max-width: 80px;
+            min-width: 70px;
+            max-width: 100px;
         }
         .radius-selector button:active {
             transform: scale(0.95);
@@ -175,48 +175,6 @@
         .status-badge.yellow { background: #ff9800; color: #fff; }
         .status-badge.red { background: #f44336; color: #fff; }
         .status-badge.gray { background: #999; color: #fff; }
-        
-        /* ДОСТОВЕРНОСТЬ */
-        .station-card .trust-badge {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 6px 0;
-            font-size: 11px;
-            color: var(--tg-theme-hint-color, #888);
-            flex-wrap: wrap;
-        }
-        .station-card .trust-badge .verified {
-            color: #4caf50;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .unverified {
-            color: #ff9800;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .time {
-            color: var(--tg-theme-hint-color, #999);
-        }
-        .station-card .trust-badge .count {
-            background: var(--tg-theme-secondary-bg-color, #e8e8e8);
-            padding: 1px 8px;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        .station-card .trust-badge .new {
-            background: #4caf50;
-            color: #fff;
-            padding: 1px 8px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 10px;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
         
         .station-card .actions {
             display: flex;
@@ -318,14 +276,9 @@
 
 <!-- Выбор радиуса -->
 <div class="radius-selector" id="radiusSelector">
-    <button data-radius="10" onclick="setRadius(10, this)">10</button>
-    <button data-radius="15" onclick="setRadius(15, this)">15</button>
-    <button data-radius="20" onclick="setRadius(20, this)">20</button>
-    <button data-radius="25" onclick="setRadius(25, this)">25</button>
-    <button data-radius="50" onclick="setRadius(50, this)">50</button>
-    <button data-radius="75" onclick="setRadius(75, this)">75</button>
-    <button data-radius="85" onclick="setRadius(85, this)">85</button>
-    <button data-radius="100" onclick="setRadius(100, this)" class="active">100</button>
+    <button data-radius="10" onclick="setRadius(10, this)">10 км</button>
+    <button data-radius="50" onclick="setRadius(50, this)">50 км</button>
+    <button data-radius="100" onclick="setRadius(100, this)" class="active">100 км</button>
 </div>
 
 <!-- Главные кнопки -->
@@ -371,9 +324,6 @@
     let currentFilter = 'all';
     let cityName = 'Неизвестно';
     let isSearching = false;
-    
-    // Хранилище для подсчёта голосов
-    let voteCounts = {};
     
     // ============================================================
     //  ВЫБОР РАДИУСА
@@ -533,24 +483,11 @@
                 const savedTime = localStorage.getItem(`time_${name}`);
                 const savedUser = localStorage.getItem(`user_${name}`);
                 
-                // Получаем количество голосов
-                const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
-                const voteCount = Object.keys(votes).length;
-                
-                // Загружаем голоса в общее хранилище
-                if (!voteCounts[name]) {
-                    voteCounts[name] = votes;
-                }
-                
                 let status = savedStatus;
                 if (!status) {
                     const statuses = ['green', 'yellow', 'red', 'gray'];
                     status = statuses[Math.floor(Math.random() * 4)];
                 }
-                
-                // Вычисляем достоверность
-                const isVerified = voteCount >= 2;
-                const isNew = savedTime && (Date.now() - new Date().setHours(0,0,0,0)) < 3600000; // последний час
                 
                 stationsWithAddresses.push({
                     name: name,
@@ -561,10 +498,7 @@
                     address: address,
                     status: status,
                     reportTime: savedTime || null,
-                    reportUser: savedUser || null,
-                    voteCount: voteCount,
-                    isVerified: isVerified,
-                    isNew: isNew
+                    reportUser: savedUser || null
                 });
             }
             
@@ -620,20 +554,6 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
-            // Формируем бейдж достоверности
-            let trustHtml = '';
-            if (station.isVerified) {
-                trustHtml = `<span class="verified">✅ Проверено (${station.voteCount} чел.)</span>`;
-            } else if (station.voteCount > 0) {
-                trustHtml = `<span class="unverified">🔄 ${station.voteCount} чел. подтвердили</span>`;
-            } else {
-                trustHtml = `<span class="unverified">❓ Нет подтверждений</span>`;
-            }
-            
-            if (station.isNew && station.reportTime) {
-                trustHtml += ` <span class="new">НОВОЕ</span>`;
-            }
-            
             html += `
                 <div class="station-card status-${station.status}">
                     <div class="name">${station.name}</div>
@@ -641,11 +561,7 @@
                     <div class="address">📍 ${station.address || 'Адрес не определён'}</div>
                     <div class="distance">📏 ${distKm} км от вас</div>
                     <span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>
-                    <div class="trust-badge">
-                        ${trustHtml}
-                        ${station.reportTime ? `<span class="time">⏱ ${station.reportTime}</span>` : ''}
-                        ${station.reportUser ? `<span>👤 ${station.reportUser}</span>` : ''}
-                    </div>
+                    ${station.reportTime ? `<div style="font-size:10px;color:#888;margin-top:4px;">⏱ Обновлено: ${station.reportTime}${station.reportUser ? ` (от ${station.reportUser})` : ''}</div>` : ''}
                     <div class="actions">
                         <button class="btn-route" onclick="openRoute(${station.lat}, ${station.lon}, '${station.name.replace(/'/g, "\\'")}')">🗺️ Маршрут</button>
                         <button class="btn-green" onclick="setStatus('${station.name.replace(/'/g, "\\'")}', 'green')">✅</button>
@@ -690,7 +606,7 @@
     }
     
     // ============================================================
-    //  УСТАНОВКА СТАТУСА (с голосованием)
+    //  УСТАНОВКА СТАТУСА
     // ============================================================
     
     function setStatus(name, status) {
@@ -698,25 +614,15 @@
         const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         const user = tg.initDataUnsafe?.user?.username || 'аноним';
         
-        // Сохраняем статус
         localStorage.setItem(`status_${name}`, status);
         localStorage.setItem(`time_${name}`, timeStr);
         localStorage.setItem(`user_${name}`, user);
-        
-        // Сохраняем голос
-        const votes = JSON.parse(localStorage.getItem(`votes_${name}`) || '{}');
-        votes[user] = { status: status, time: timeStr };
-        localStorage.setItem(`votes_${name}`, JSON.stringify(votes));
-        voteCounts[name] = votes;
         
         const station = allStations.find(s => s.name === name);
         if (station) {
             station.status = status;
             station.reportTime = timeStr;
             station.reportUser = user;
-            station.voteCount = Object.keys(votes).length;
-            station.isVerified = station.voteCount >= 2;
-            station.isNew = true;
         }
         
         const data = {
