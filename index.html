@@ -364,6 +364,9 @@
     let retryCount = 0;
     const MAX_RETRIES = 2;
     
+    // Хранилище для фиксированных данных о топливе
+    let fuelCache = {};
+    
     // ============================================================
     //  ВЫБОР РАДИУСА
     // ============================================================
@@ -441,15 +444,25 @@
     }
     
     // ============================================================
-    //  ГЕНЕРАЦИЯ ДАННЫХ О ТОПЛИВЕ
+    //  ГЕНЕРАЦИЯ ДАННЫХ О ТОПЛИВЕ (С КЭШИРОВАНИЕМ)
     // ============================================================
     
-    function generateFuelData() {
-        return [
+    function getFuelData(stationName) {
+        // Проверяем, есть ли данные в кэше
+        if (fuelCache[stationName]) {
+            return fuelCache[stationName];
+        }
+        
+        // Генерируем новые данные только один раз
+        const fuels = [
             { name: 'АИ-92', available: Math.random() > 0.25 },
             { name: 'АИ-95', available: Math.random() > 0.2 },
             { name: 'ДТ', available: Math.random() > 0.3 }
         ];
+        
+        // Сохраняем в кэш
+        fuelCache[stationName] = fuels;
+        return fuels;
     }
     
     // ============================================================
@@ -575,7 +588,8 @@
                     status = statuses[Math.floor(Math.random() * 4)];
                 }
                 
-                const fuels = generateFuelData();
+                // Используем КЭШИРОВАННЫЕ данные о топливе (не генерируем заново!)
+                const fuels = getFuelData(name);
                 
                 stationsWithAddresses.push({
                     name: name,
@@ -660,6 +674,7 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
+            // Используем КЭШИРОВАННЫЕ данные о топливе
             const fuelHtml = station.fuels.map(f => {
                 const status = fuelStatusMap[f.available] || fuelStatusMap.false;
                 return `
