@@ -136,7 +136,6 @@
         .stats-bar .s-green { color: #4caf50; }
         .stats-bar .s-yellow { color: #ff9800; }
         .stats-bar .s-red { color: #f44336; }
-        .stats-bar .s-gray { color: #999; }
         
         .station-card {
             background: var(--tg-theme-secondary-bg-color, #f8f8f8);
@@ -149,7 +148,6 @@
         .station-card.status-green { border-left-color: #4caf50; }
         .station-card.status-yellow { border-left-color: #ff9800; }
         .station-card.status-red { border-left-color: #f44336; }
-        .station-card.status-gray { border-left-color: #999; }
         
         .station-card .name {
             font-size: 15px;
@@ -175,7 +173,6 @@
         .status-badge.green { background: #4caf50; color: #fff; }
         .status-badge.yellow { background: #ff9800; color: #fff; }
         .status-badge.red { background: #f44336; color: #fff; }
-        .status-badge.gray { background: #999; color: #fff; }
         
         .station-card .info-row {
             display: flex;
@@ -326,7 +323,6 @@
     <span class="s-green">🟢 <span id="greenCount">0</span></span>
     <span class="s-yellow">🟡 <span id="yellowCount">0</span></span>
     <span class="s-red">🔴 <span id="redCount">0</span></span>
-    <span class="s-gray">⚪ <span id="grayCount">0</span></span>
 </div>
 
 <!-- Список заправок -->
@@ -554,11 +550,13 @@
                         }
                     }
                     
+                    // Получаем статус из localStorage
                     const savedStatus = localStorage.getItem(`status_${name}`);
                     const savedTime = localStorage.getItem(`time_${name}`);
                     const savedUser = localStorage.getItem(`user_${name}`);
                     
                     let status = savedStatus;
+                    // Если статуса нет — ставим "gray" (Нет данных)
                     if (!status) {
                         status = 'gray';
                     }
@@ -617,8 +615,14 @@
     // ============================================================
     
     function renderStations(stations) {
+        // Фильтруем только три статуса: green, yellow, red
+        // gray (Нет данных) показываем только если фильтр "Все"
         const filtered = stations.filter(s => {
-            if (currentFilter === 'all') return true;
+            if (currentFilter === 'all') {
+                // Показываем все, включая gray
+                return true;
+            }
+            // Показываем только выбранный статус
             return s.status === currentFilter;
         });
         
@@ -633,9 +637,9 @@
         }
         
         const statusMap = {
-            green: { text: '✅ Есть топливо', class: 'green' },
+            green: { text: '🟢 Есть топливо', class: 'green' },
             yellow: { text: '🟡 Очередь / лимиты', class: 'yellow' },
-            red: { text: '❌ Нет топлива', class: 'red' },
+            red: { text: '🔴 Нет топлива', class: 'red' },
             gray: { text: '❓ Нет данных', class: 'gray' }
         };
         
@@ -674,13 +678,15 @@
     }
     
     // ============================================================
-    //  СТАТИСТИКА
+    //  СТАТИСТИКА (только три статуса)
     // ============================================================
     
     function updateStats(stations) {
-        const counts = { green: 0, yellow: 0, red: 0, gray: 0 };
+        const counts = { green: 0, yellow: 0, red: 0 };
         stations.forEach(s => {
-            if (counts[s.status] !== undefined) counts[s.status]++;
+            if (s.status === 'green') counts.green++;
+            else if (s.status === 'yellow') counts.yellow++;
+            else if (s.status === 'red') counts.red++;
         });
         
         const total = stations.length;
@@ -688,7 +694,6 @@
         document.getElementById('greenCount').textContent = counts.green;
         document.getElementById('yellowCount').textContent = counts.yellow;
         document.getElementById('redCount').textContent = counts.red;
-        document.getElementById('grayCount').textContent = counts.gray;
     }
     
     // ============================================================
@@ -737,7 +742,7 @@
         renderStations(allStations);
         updateStats(allStations);
         
-        const statusNames = { green: 'Есть', yellow: 'Очередь', red: 'Нет', gray: 'Нет данных' };
+        const statusNames = { green: 'Есть', yellow: 'Очередь', red: 'Нет' };
         showToast(`✅ Статус обновлён: ${statusNames[status] || status}`);
     }
     
