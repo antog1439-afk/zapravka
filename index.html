@@ -273,6 +273,17 @@
             border-radius: 8px;
             border: 1px solid #f44336;
         }
+        .error-state .retry-btn {
+            margin-top: 12px;
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: 1px solid var(--tg-theme-hint-color, #ddd);
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--tg-theme-text-color, #000);
+        }
+        .error-state .retry-btn:active { opacity: 0.7; }
         
         .toast {
             position: fixed;
@@ -361,11 +372,18 @@
     let currentFilter = 'all';
     let cityName = 'Неизвестно';
     let isSearching = false;
-    let retryCount = 0;
     const MAX_RETRIES = 2;
+    const REQUEST_TIMEOUT = 25000;
     
     // Хранилище для фиксированных данных о топливе
     let fuelCache = {};
+    
+    // Список серверов Overpass API (если один не отвечает — пробуем другой)
+    const OVERPASS_SERVERS = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.fr/api/interpreter'
+    ];
     
     // ============================================================
     //  ВЫБОР РАДИУСА
@@ -448,19 +466,16 @@
     // ============================================================
     
     function getFuelData(stationName) {
-        // Проверяем, есть ли данные в кэше
         if (fuelCache[stationName]) {
             return fuelCache[stationName];
         }
         
-        // Генерируем новые данные только один раз
         const fuels = [
             { name: 'АИ-92', available: Math.random() > 0.25 },
             { name: 'АИ-95', available: Math.random() > 0.2 },
             { name: 'ДТ', available: Math.random() > 0.3 }
         ];
         
-        // Сохраняем в кэш
         fuelCache[stationName] = fuels;
         return fuels;
     }
@@ -474,7 +489,7 @@
         for (let i = 0; i <= maxRetries; i++) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
                 const response = await fetch(url, {
                     ...options,
                     signal: controller.signal
@@ -484,7 +499,7 @@
             } catch (error) {
                 lastError = error;
                 if (i < maxRetries) {
-                    await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+                    await new Promise(r => setTimeout(r, 1500 * (i + 1)));
                 }
             }
         }
@@ -492,13 +507,12 @@
     }
     
     // ============================================================
-    //  ПОИСК ЗАПРАВОК
+    //  ПОИСК ЗАПРАВОК (с автоматической сменой сервера)
     // ============================================================
     
     async function findNearby() {
         if (isSearching) return;
         isSearching = true;
-        retryCount = 0;
         
         if (!userLocation) {
             userLocation = await getUserLocation();
@@ -516,123 +530,144 @@
             </div>
         `;
         
-        try {
-            const radiusMeters = SEARCH_RADIUS_KM * 1000;
-            const query = `[out:json];(node["amenity"="fuel"](around:${radiusMeters},${lat},${lon});way["amenity"="fuel"](around:${radiusMeters},${lat},${lon}););out center;`;
-            const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-            
-            const response = await fetchWithRetry(url, {}, MAX_RETRIES);
-            
-            if (!response.ok) {
-                throw new Error(`Сервер временно недоступен (${response.status}). Попробуйте позже.`);
-            }
-            
-            const data = await response.json();
-            const elements = data.elements || [];
-            
-            if (elements.length === 0) {
-                document.getElementById('stationsContainer').innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">😔</div>
-                        <p>Заправок не найдено в радиусе ${SEARCH_RADIUS_KM} км</p>
-                        <p style="font-size:12px;color:#888;margin-top:4px;">Попробуйте увеличить радиус</p>
-                    </div>
-                `;
+        const radiusMeters = SEARCH_RADIUS_KM * 1000;
+        const query = `[out:json];(node["amenity"="fuel"](around:${radiusMeters},${lat},${lon});way["amenity"="fuel"](around:${radiusMeters},${lat},${lon}););out center;`;
+        
+        let lastError = null;
+        
+        // Пробуем разные серверы
+        for (let serverIdx = 0; serverIdx < OVERPASS_SERVERS.length; serverIdx++) {
+            try {
+                const serverUrl = OVERPASS_SERVERS[serverIdx];
+                const url = `${serverUrl}?data=${encodeURIComponent(query)}`;
+                
+                console.log(`🔄 Пробуем сервер ${serverIdx + 1}/${OVERPASS_SERVERS.length}: ${serverUrl}`);
+                
+                const response = await fetchWithRetry(url, {}, MAX_RETRIES);
+                
+                if (!response.ok) {
+                    throw new Error(`Сервер вернул ошибку ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const elements = data.elements || [];
+                
+                if (elements.length === 0) {
+                    document.getElementById('stationsContainer').innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">😔</div>
+                            <p>Заправок не найдено в радиусе ${SEARCH_RADIUS_KM} км</p>
+                            <p style="font-size:12px;color:#888;margin-top:4px;">Попробуйте увеличить радиус</p>
+                        </div>
+                    `;
+                    isSearching = false;
+                    return;
+                }
+                
+                // Обрабатываем данные
+                const stationsWithAddresses = [];
+                
+                for (const el of elements) {
+                    let stationLat, stationLon;
+                    if (el.lat && el.lon) {
+                        stationLat = el.lat;
+                        stationLon = el.lon;
+                    } else if (el.center) {
+                        stationLat = el.center.lat;
+                        stationLon = el.center.lon;
+                    } else continue;
+                    
+                    const tags = el.tags || {};
+                    const name = tags.name || 'АЗС';
+                    const brand = tags.brand || '';
+                    const dist = haversine(lat, lon, stationLat, stationLon);
+                    
+                    if (dist > SEARCH_RADIUS_KM) continue;
+                    
+                    const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
+                    const street = tags['addr:street'] || '';
+                    const house = tags['addr:housenumber'] || '';
+                    
+                    let address = '';
+                    if (city) address += city;
+                    if (street) address += (address ? ', ' : '') + street;
+                    if (house) address += (address ? ', ' : '') + 'д. ' + house;
+                    
+                    if (!address) {
+                        try {
+                            address = await getAddressByCoords(stationLat, stationLon);
+                        } catch {
+                            address = 'Адрес не определён';
+                        }
+                    }
+                    
+                    const savedStatus = localStorage.getItem(`status_${name}`);
+                    const savedTime = localStorage.getItem(`time_${name}`);
+                    const savedUser = localStorage.getItem(`user_${name}`);
+                    
+                    let status = savedStatus;
+                    if (!status) {
+                        const statuses = ['green', 'yellow', 'red', 'gray'];
+                        status = statuses[Math.floor(Math.random() * 4)];
+                    }
+                    
+                    const fuels = getFuelData(name);
+                    
+                    stationsWithAddresses.push({
+                        name: name,
+                        brand: brand,
+                        lat: stationLat,
+                        lon: stationLon,
+                        distance: dist,
+                        address: address,
+                        status: status,
+                        reportTime: savedTime || null,
+                        reportUser: savedUser || null,
+                        fuels: fuels
+                    });
+                }
+                
+                allStations = stationsWithAddresses;
+                allStations.sort((a, b) => a.distance - b.distance);
+                
+                renderStations(allStations);
+                updateStats(allStations);
+                
+                console.log(`✅ Сервер ${serverIdx + 1} отработал успешно!`);
                 isSearching = false;
                 return;
-            }
-            
-            const stationsWithAddresses = [];
-            
-            for (const el of elements) {
-                let stationLat, stationLon;
-                if (el.lat && el.lon) {
-                    stationLat = el.lat;
-                    stationLon = el.lon;
-                } else if (el.center) {
-                    stationLat = el.center.lat;
-                    stationLon = el.center.lon;
-                } else continue;
                 
-                const tags = el.tags || {};
-                const name = tags.name || 'АЗС';
-                const brand = tags.brand || '';
-                const dist = haversine(lat, lon, stationLat, stationLon);
+            } catch (error) {
+                lastError = error;
+                console.warn(`❌ Сервер ${serverIdx + 1} не ответил: ${error.message}`);
                 
-                if (dist > SEARCH_RADIUS_KM) continue;
-                
-                const city = tags['addr:city'] || tags['addr:town'] || tags['addr:village'] || '';
-                const street = tags['addr:street'] || '';
-                const house = tags['addr:housenumber'] || '';
-                
-                let address = '';
-                if (city) address += city;
-                if (street) address += (address ? ', ' : '') + street;
-                if (house) address += (address ? ', ' : '') + 'д. ' + house;
-                
-                if (!address) {
-                    try {
-                        address = await getAddressByCoords(stationLat, stationLon);
-                    } catch {
-                        address = 'Адрес не определён';
-                    }
+                if (serverIdx < OVERPASS_SERVERS.length - 1) {
+                    showToast(`🔄 Переключаемся на другой сервер...`);
                 }
-                
-                const savedStatus = localStorage.getItem(`status_${name}`);
-                const savedTime = localStorage.getItem(`time_${name}`);
-                const savedUser = localStorage.getItem(`user_${name}`);
-                
-                let status = savedStatus;
-                if (!status) {
-                    const statuses = ['green', 'yellow', 'red', 'gray'];
-                    status = statuses[Math.floor(Math.random() * 4)];
-                }
-                
-                // Используем КЭШИРОВАННЫЕ данные о топливе (не генерируем заново!)
-                const fuels = getFuelData(name);
-                
-                stationsWithAddresses.push({
-                    name: name,
-                    brand: brand,
-                    lat: stationLat,
-                    lon: stationLon,
-                    distance: dist,
-                    address: address,
-                    status: status,
-                    reportTime: savedTime || null,
-                    reportUser: savedUser || null,
-                    fuels: fuels
-                });
             }
-            
-            allStations = stationsWithAddresses;
-            allStations.sort((a, b) => a.distance - b.distance);
-            
-            renderStations(allStations);
-            updateStats(allStations);
-            
-        } catch (error) {
-            console.error('Ошибка:', error);
-            
-            let errorMessage = 'Не удалось загрузить данные';
-            if (error.name === 'AbortError') {
-                errorMessage = 'Сервер не отвечает. Проверьте интернет и попробуйте снова.';
-            } else if (error.message && error.message.includes('HTTP 500')) {
-                errorMessage = 'Сервер перегружен. Попробуйте через минуту.';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            document.getElementById('stationsContainer').innerHTML = `
-                <div class="error-state">
-                    <div class="icon">⚠️</div>
-                    <p>Ошибка загрузки</p>
-                    <div class="error-details">${errorMessage}</div>
-                    <button onclick="findNearby()" style="margin-top:12px;padding:10px 24px;border-radius:10px;border:1px solid var(--tg-theme-hint-color,#ddd);background:var(--tg-theme-secondary-bg-color,#f0f0f0);cursor:pointer;font-size:14px;color:var(--tg-theme-text-color,#000);">↻ Повторить</button>
-                    <p style="font-size:11px;color:#888;margin-top:8px;">Сервер может быть перегружен. Попробуйте позже.</p>
-                </div>
-            `;
         }
+        
+        // Если все серверы не ответили
+        console.error('Все серверы Overpass API недоступны');
+        
+        let errorMessage = 'Все серверы временно недоступны. Попробуйте позже.';
+        if (lastError?.name === 'AbortError') {
+            errorMessage = 'Сервер не отвечает. Проверьте интернет и попробуйте снова.';
+        } else if (lastError?.message?.includes('HTTP 500')) {
+            errorMessage = 'Сервер перегружен. Попробуйте через минуту.';
+        } else if (lastError?.message) {
+            errorMessage = lastError.message;
+        }
+        
+        document.getElementById('stationsContainer').innerHTML = `
+            <div class="error-state">
+                <div class="icon">⚠️</div>
+                <p>Ошибка загрузки</p>
+                <div class="error-details">${errorMessage}</div>
+                <button class="retry-btn" onclick="findNearby()">↻ Повторить</button>
+                <p style="font-size:11px;color:#888;margin-top:8px;">Попробуйте позже или уменьшите радиус</p>
+            </div>
+        `;
         
         isSearching = false;
     }
@@ -674,7 +709,6 @@
             const statusInfo = statusMap[station.status] || statusMap.gray;
             const distKm = station.distance.toFixed(1);
             
-            // Используем КЭШИРОВАННЫЕ данные о топливе
             const fuelHtml = station.fuels.map(f => {
                 const status = fuelStatusMap[f.available] || fuelStatusMap.false;
                 return `
